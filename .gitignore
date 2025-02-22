@@ -1,0 +1,10 @@
+# Environment
+.venv
+
+# Data folder
+images/*
+output
+!images/test.png
+
+# Tesseract Executable
+Tesseract-OCR/
