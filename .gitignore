@@ -1,10 +1,11 @@
 # Environment
 .venv
+__pycache__
 
-# Data folder
-images/*
-output
+# Input folder
+images
 !images/test.png
+pix2text.docx
 
 # Tesseract Executable
 Tesseract-OCR/

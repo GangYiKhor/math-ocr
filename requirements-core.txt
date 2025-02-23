@@ -1,0 +1,9 @@
+fastapi[standard]
+latex2mathml
+lxml
+packaging
+pillow
+pix2text
+pytesseract
+python-docx
+torch

@@ -1,18 +1,27 @@
-# How to Setup:
+# OCR-Math
 
-1. Download Tesseract from
+An OCR application to extract text and/or mathematical expressions from images, which can be exported as MS `.docx` format for easy copy paste process
+
+## How to Setup:
+1. Clone this repository
+2. Run `pip install -r requirements.txt`
+3. Download Tesseract from
 	- https://tesseract-ocr.github.io/tessdoc/Installation.html
 	- https://github.com/UB-Mannheim/tesseract/wiki
-2. Download Languages `*.traineddata` (Optional)
+4. Download Languages `*.traineddata` (Optional)
 	- https://github.com/tesseract-ocr/tessdata
-3. Move downloaded languages to the installed path `.../Tesseract-OCR/tessdata/`
-4. Move your images `(.png, .jpg, .jpeg)` into `images/`
-5. Update `settings.cfg` if needed
-	- `TESSERACT_PATH`: Path to `tesseract.exe`
+5. Move downloaded languages to the installed path `.../Tesseract-OCR/tessdata/`
+6. Move `Tesseract-OCR/` into this repository
+7. Move your images `(.png, .jpg, .jpeg)` into `images/`
+8. Update `settings.cfg` if needed
 	- `TIMEOUT`: Timeout for OCR process, E.g. `<int>0`
-	- `OUTPUT_TYPE`: `TEXT` or `PDF`
 	- `LANG`: Any available languages, E.g. `eng`
-	- `COMBINE`: Combine output into one file, E.g. `<bool>TRUE`
-	- `CLEAR_OUTPUT`: Clear output folder before extraction, E.g. `<bool>TRUE`
-	- `PRINT_TEXT`: Print output after each extraction, E.g. `<bool>TRUE`
-6. Run `python OCR.py`
+
+## How to Run
+### Method 1 (Python Script)
+1. Edit image path in `ocr/p2t.py` (Formula) or `ocr/tesseract.py` (Text only)
+2. Run `python ocr/p2t.py` or `python ocr/tesseract.py`
+
+### Method 2 (FastAPI) [Incomplete]
+1. Run `fastapi run backend/main.py`
+2. Send request to `http://.../` (Does not accept param or file yet)
