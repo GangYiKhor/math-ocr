@@ -1,3 +1,4 @@
+from enum import Enum
 from io import BytesIO
 from pathlib import Path
 from typing import Literal
@@ -8,6 +9,7 @@ from PIL import Image
 from PIL.Image import Image as ImageType
 from pix2text import Pix2Text
 import latex2mathml.converter
+import latex2mathml.exceptions
 
 
 FILE_DIR = Path(__file__).resolve().parent
@@ -25,11 +27,26 @@ class FormatConverter:
 	def convert_mathml_to_xml(self, mathml: str) -> etree._ElementTree:
 		return etree.fromstring(mathml)
 
-	def convert_mathmlxml_to_omml(self, mathml: etree._ElementTree):
+	def convert_mathmlxml_to_omml(self, mathml: etree._ElementTree) -> etree._ElementTree:
 		return self.mathml_to_omml(mathml)
 
-	def convert_omml_to_docx_element(self, omml: etree._ElementTree):
+	def convert_omml_to_docx_element(self, omml: etree._ElementTree) -> etree._Element:
 		return omml.getroot()
+
+	def try_convert_latex_to_mathml(self, latex: str) -> str:
+		try:
+			return formatter.convert_latex_to_mathml(latex)
+		except latex2mathml.exceptions.NoAvailableTokensError:
+			return latex
+
+	def try_convert_latex_to_omml(self, latex: str) -> str:
+		try:
+			output = formatter.convert_latex_to_mathml(latex)
+			output = formatter.convert_mathml_to_xml(output)
+			output = formatter.convert_mathmlxml_to_omml(output)
+			return str(output)
+		except latex2mathml.exceptions.NoAvailableTokensError:
+			return latex
 
 
 class Sanitiser:
@@ -75,26 +92,37 @@ class P2TAnalyser:
 		return result
 
 
+class P2TInput(Enum):
+	TEXT = 'text'
+	FORMULA = 'formula'
+	TEXT_FORMULA = 'text_formula'
+	PAGE = 'page'
+	PDF = 'pdf'
+
+
+class P2TOutput(Enum):
+	LATEX = 'latex'
+	MATHML = 'mathml'
+	OMML = 'omml'
+	DOCX = 'docx'
+
+
 analyser = P2TAnalyser()
 formatter = FormatConverter()
 
 
-def analyse_p2t(image: ImageType, type: Literal['text', 'formula', 'text_formula', 'page', 'pdf'] = 'text_formula', output_type: Literal['latex', 'docx'] = 'latex') -> list[str] | BytesIO:
-	results = analyser.analyse(image)
-
-	match (type):
-		case 'text_formula' | 'formula':
-			results = Sanitiser.clean_mix_output(results)
-		case 'text':
-			results = [results]
-		case _:
-			raise NotImplementedError()
-
+def convert_output(results: list[str], output_type: P2TOutput) -> list[str] | BytesIO:
 	match (output_type):
-		case 'latex':
+		case P2TOutput.LATEX:
 			return results
 
-		case 'docx':
+		case P2TOutput.MATHML:
+			return [formatter.try_convert_latex_to_mathml(result) for result in results]
+
+		case P2TOutput.OMML:
+			return [formatter.try_convert_latex_to_omml(result) for result in results if result.startswith(Sanitiser.MATH_BEGIN)]
+
+		case P2TOutput.DOCX:
 			document = Document()
 			p = document.add_paragraph()
 
@@ -114,14 +142,48 @@ def analyse_p2t(image: ImageType, type: Literal['text', 'formula', 'text_formula
 			return file_stream
 
 
+def analyse_p2t(
+		image: ImageType | Path,
+		input_type: P2TInput = P2TInput.TEXT_FORMULA,
+		output_type: P2TOutput | list[P2TOutput] = P2TOutput.LATEX,
+		) -> list[str] | BytesIO | dict[str, list[str] | BytesIO]:
+
+	results = analyser.analyse(image, input_type.value)
+	print(results)
+
+	match (input_type):
+		case P2TInput.TEXT_FORMULA | P2TInput.FORMULA:
+			results = Sanitiser.clean_mix_output(results)
+		case P2TInput.TEXT:
+			results = [results]
+		case P2TInput.PDF:
+			results.to_markdown('output-pdf-md')
+		case _:
+			raise NotImplementedError()
+
+	if isinstance(output_type, list):
+		outputs = {out_type.value: convert_output(results, out_type) for out_type in output_type}
+		return outputs
+
+	return convert_output(results, output_type)
+
+
 if __name__ == '__main__':
 	image = Image.open(BASE_DIR / 'images' / 'sqrt-2.3.png')
-	latex = analyse_p2t(image, 'text_formula', 'latex')
-	stream = analyse_p2t(image, 'text_formula', 'docx')
-
+	latex = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.LATEX)
 	print(latex)
 
+	mathml = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.MATHML)
+	print(mathml)
+
+	omml = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.OMML)
+	print(omml)
+
+	stream = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.DOCX)
 	filepath = 'pix2text.docx'
 	with open(filepath, 'wb') as file:
 		file.write(stream.getbuffer())
 	print(f'File written at {filepath}')
+
+	output = analyse_p2t(image, P2TInput.TEXT_FORMULA, [P2TOutput.LATEX, P2TOutput.MATHML, P2TOutput.DOCX])
+	print(output)
