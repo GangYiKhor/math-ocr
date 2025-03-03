@@ -5,8 +5,16 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "FastAPI Dev",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "uvicorn",
+			"args": ["backend.main:app", "--reload"],
+			"jinja": true
+		},
+		{
 			"type": "node-terminal",
-			"name": "Run Script: dev",
+			"name": "Vue Dev",
 			"request": "launch",
 			"command": "npm run dev",
 			"cwd": "${workspaceFolder}\\frontend"

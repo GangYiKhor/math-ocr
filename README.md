@@ -18,7 +18,13 @@ An OCR application to extract text and/or mathematical expressions from images, 
    - `TIMEOUT`: Timeout for OCR process, E.g. `<int>0`
    - `LANG`: Any available languages, E.g. `eng`
 
-## How to Run
+## How to Run (Dev)
 
-1. Run `fastapi run backend/main.py`
-2. Run Vue frontend (Follow `README` in frontend)
+### Method 1 (Shell)
+
+1. Run `fastapi dev backend/main.py`
+2. Run `npm run dev` in `./frontend/`
+
+### Method 2 (VSCode)
+
+1. Run debug session for `FastAPI Dev` and `Vue Dev`

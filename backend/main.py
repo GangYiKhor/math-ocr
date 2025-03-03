@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import Annotated
 
 from PIL import Image
-from fastapi import FastAPI, Form, Query, Response, UploadFile
+from fastapi import FastAPI, Form, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from ocr import Settings, analyse_tesseract, analyse_p2t, convert_output
-from ocr.p2t import P2TInput, P2TOutput
+from ocr.p2t import P2TOutput
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -27,7 +27,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 
 @app.get('/')
@@ -69,7 +68,9 @@ async def analyse(file: UploadFile):
 
 @app.post('/download')
 async def download(latex: Annotated[list[str], Form()]):
-	print(latex)
-	stream = convert_output(latex, output_type=P2TOutput.DOCX)
-	stream.seek(0)
-	return StreamingResponse(stream, media_type='application/octet', headers={'Content-Disposition': 'attachment; filename="math-ocr.docx"'})
+	try:
+		stream = convert_output(latex, output_type=P2TOutput.DOCX)
+		stream.seek(0)
+		return StreamingResponse(stream, media_type='application/octet', headers={'Content-Disposition': 'attachment; filename="math-ocr.docx"'})
+	except Exception:
+		return Response('Invalid LaTeX!', 400)
