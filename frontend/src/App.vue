@@ -12,9 +12,26 @@ import RectangleIcon from './components/RectangleIcon.vue';
 import OvalIcon from './components/OvalIcon.vue';
 import DotIcon from './components/DotIcon.vue';
 import CopyIcon from './components/CopyIcon.vue';
+import UndoIcon from './components/UndoIcon.vue';
+import RedoIcon from './components/RedoIcon.vue';
 
 const urlCreator = window.URL || window.webkitURL;
 
+function createEmptyImage(result) {
+  result ??= {};
+  const canvas = document.createElement('canvas');
+  canvas.width = 100;
+  canvas.height = 100;
+  canvas.toBlob((blob) => {
+    result.blob = blob;
+    result.url = urlCreator.createObjectURL(blob);
+  });
+  return result;
+}
+
+const MAX_FILE_SIZE = 50;
+const MAX_UNDO_STACK = 100;
+const EMPTY_IMAGE = createEmptyImage({});
 const FILE_TYPES = new Set(['image/jpeg', 'image/png']);
 const PEN_MODES = [
   { mode: 'draw', icon: PencilIcon },
@@ -45,6 +62,8 @@ const isDrawing = ref();
 const images = ref(new Map());
 const results = ref(new Map());
 const sketches = ref(new Map());
+const undoStacks = ref(new Map());
+const redoStacks = ref(new Map());
 
 const selectedUuid = ref();
 const selectedMode = ref(PEN_MODES[0].mode);
@@ -55,6 +74,25 @@ let curX;
 let curY;
 let anchorX;
 let anchorY;
+
+function canvasLoadImage({ ctx, blob, url, width, height, cb }) {
+  if (!ctx) {
+    canvasClear();
+    ctx = getCtx();
+  }
+
+  const img = new Image();
+  img.onload = function () {
+    ctx.scale(width / img.width, height / img.height);
+    ctx.drawImage(img, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    cb?.();
+  };
+
+  if (url) img.src = url;
+  else if (blob) img.src = urlCreator.createObjectURL(blob);
+  else cb?.();
+}
 
 function getCtx() {
   return canvas.value.getContext('2d');
@@ -98,6 +136,12 @@ function loadFiles(files, selectLast = true) {
 function dragOver() {
   clearTimeout(dragOverTimeout.value);
   draggedOver.value = true;
+  if (isDrawing.value) {
+    // If dragged the page due to selection problem
+    isDrawing.value = false;
+    const url = sketches.value.get(selectedUuid.value)?.url;
+    if (url) canvasLoadImage({ url });
+  }
 }
 
 function dragEnd() {
@@ -106,7 +150,8 @@ function dragEnd() {
 
 function dropFiles(event) {
   draggedOver.value = false;
-  if (event.target.id !== 'image-dropper') return;
+  fixSelectBug();
+  if (event.target.id !== 'image-dropper' || event.dataTransfer.files.length === 0) return;
   loadFiles(event.dataTransfer.files);
 }
 
@@ -157,22 +202,12 @@ function selectFile(uuid) {
 watch(
   [selectedUuid, sketches],
   (newValue, oldValue) => {
-    const ctx = getCtx();
-
-    const sketch = sketches.value.get(newValue[0])?.url;
-    if (!sketch) {
+    const url = sketches.value.get(newValue[0])?.url;
+    if (!url) {
       canvasClear();
-      return;
-    } else if (oldValue[0] === newValue[0]) {
-      return;
+    } else if (oldValue[0] !== newValue[0]) {
+      canvasLoadImage({ url });
     }
-
-    canvasClear();
-    const img = new Image();
-    img.onload = function () {
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = sketch;
   },
   { deep: true },
 );
@@ -181,6 +216,8 @@ function analyse(uuid) {
   if (isAnalysing.value) return;
 
   const fileImageUrl = images.value.get(uuid)?.url;
+  const sketchesImageUrl = sketches.value.get(uuid)?.url;
+  if (!(fileImageUrl || sketchesImageUrl)) return;
 
   const uploadImage = async function (image) {
     try {
@@ -206,10 +243,6 @@ function analyse(uuid) {
     }
   };
 
-  const loadCanvasImage = function (canvasImage) {
-    canvasImage.src = sketches.value.get(uuid)?.url;
-  };
-
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.value.width;
   tempCanvas.height = canvas.value.height;
@@ -218,20 +251,26 @@ function analyse(uuid) {
   ctx.fillStyle = 'white';
   ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-  const fileImage = new Image();
-  const canvasImage = new Image();
-  fileImage.onload = function () {
-    ctx.drawImage(fileImage, 0, 0);
-    loadCanvasImage(canvasImage);
-  };
-
-  canvasImage.onload = function () {
-    ctx.drawImage(canvasImage, 0, 0);
+  const getBlob = function () {
     tempCanvas.toBlob((blob) => uploadImage(blob));
   };
 
-  if (fileImageUrl) fileImage.src = fileImageUrl;
-  else loadCanvasImage(canvasImage);
+  if (fileImageUrl) {
+    canvasLoadImage({
+      ctx,
+      url: fileImageUrl,
+      width: tempCanvas.width,
+      height: tempCanvas.height,
+      cb: () =>
+        canvasLoadImage({
+          ctx,
+          url: sketchesImageUrl,
+          cb: getBlob,
+        }),
+    });
+  } else {
+    canvasLoadImage({ ctx, url: sketchesImageUrl, width: tempCanvas.width, height: tempCanvas.height, cb: getBlob });
+  }
 }
 
 function buildSvg(latex = []) {
@@ -329,6 +368,15 @@ function onResize({ width, height }) {
 function saveCanvas() {
   canvas.value.toBlob((blob) => {
     const url = urlCreator.createObjectURL(blob);
+
+    const undoStack = undoStacks.value.get(selectedUuid.value) ?? [];
+    const curSketch = sketches.value.get(selectedUuid.value) ?? EMPTY_IMAGE;
+
+    undoStack.push(curSketch);
+    if (undoStack.length > MAX_UNDO_STACK) undoStack.splice(0, undoStack.length - MAX_UNDO_STACK);
+    undoStacks.value.set(selectedUuid.value, undoStack);
+    redoStacks.value.set(selectedUuid.value, []);
+
     sketches.value.set(selectedUuid.value, { blob, url });
   });
 }
@@ -393,6 +441,7 @@ function getLocation(event) {
 
 function canvasMouseDown(event) {
   if (!images.value.has(selectedUuid.value)) return;
+  if (draggedOver.value) return;
   isDrawing.value = true;
 
   const { curX, curY } = getLocation(event);
@@ -495,6 +544,8 @@ function canvasMouseLeave() {
 }
 
 function canvasMouseMove(event) {
+  if (!selectedUuid.value) return;
+
   const { curX: x, curY: y } = getLocation(event);
   const size = selectedSize.value;
   const ctx = getCtx();
@@ -560,6 +611,49 @@ function canvasMouseMove(event) {
       break;
   }
 }
+
+function undo() {
+  const undoImage = undoStacks.value.get(selectedUuid.value)?.pop();
+  if (!undoImage) return;
+
+  const curSketch = sketches.value.get(selectedUuid.value);
+  const redoStack = redoStacks.value.get(selectedUuid.value) ?? [];
+
+  if (curSketch) redoStack.push(curSketch);
+  redoStacks.value.set(selectedUuid.value, redoStack);
+  sketches.value.set(selectedUuid.value, undoImage);
+
+  canvasLoadImage({ url: undoImage.url });
+}
+
+function redo() {
+  const redoImage = redoStacks.value.get(selectedUuid.value)?.pop();
+  if (!redoImage) return;
+
+  const curSketch = sketches.value.get(selectedUuid.value);
+  const undoStack = undoStacks.value.get(selectedUuid.value) ?? [];
+
+  if (curSketch) undoStack.push(curSketch);
+  undoStacks.value.set(selectedUuid.value, undoStack);
+  sketches.value.set(selectedUuid.value, redoImage);
+
+  canvasLoadImage({ url: redoImage.url });
+}
+
+function fixSelectBug() {
+  if (window.getSelection) {
+    if (window.getSelection().empty) {
+      // Chrome
+      window.getSelection().empty();
+    } else if (window.getSelection().removeAllRanges) {
+      // Firefox
+      window.getSelection().removeAllRanges();
+    }
+  } else if (document.selection) {
+    // IE
+    document.selection.empty();
+  }
+}
 </script>
 
 <template>
@@ -571,31 +665,34 @@ function canvasMouseMove(event) {
     @mouseup.prevent="canvasMouseEnd"
     class="h-screen flex flex-col justify-center items-center bg-neutral-200"
   >
-    <h1 class="mb-4 font-bold tracking-wider text-5xl">Math OCR</h1>
+    <h1 class="mb-4 font-bold tracking-wider text-5xl pointer-events-none select-none">Math OCR</h1>
 
-    <div class="h-[87%] w-[90%] grid grid-rows-[calc(var(--spacing)*30)_calc(var(--spacing))_1fr] bg-white border-cyan-800 border-4 rounded-t-xl">
-      <div class="relative h-30 w-full px-0.5 overflow-x-auto overflow-y-hidden scroll-smooth text-nowrap horizontal-custom-scrollbar">
+    <div class="h-[87%] w-[85%] grid grid-rows-[calc(var(--spacing)*30)_calc(var(--spacing))_1fr] bg-white border-cyan-800 border-4 rounded-t-xl">
+      <div class="relative h-30 w-full px-0.5 overflow-x-auto overflow-y-hidden scroll-smooth text-nowrap horizontal-custom-scrollbar select-none">
         <div v-for="item of images.entries()" :key="item[0]" class="relative h-full w-20 p-1 inline-block">
-          <div @click="selectFile(item[0])" class="relative h-full w-full border-2 rounded-sm bg-gray-200 cursor-pointer hover:brightness-90 active:brightness-80 select-none">
-            <img v-show="item[1]" :src="item[1]?.url" :alt="`img-${item[0]}`" class="h-full w-full rounded-sm object-contain object-left-top" />
+          <div @click="selectFile(item[0])" class="relative h-full w-full border-2 rounded-sm bg-gray-200 cursor-pointer hover:brightness-90 active:brightness-80">
+            <img v-show="item[1]" :src="item[1]?.url" class="h-full w-full rounded-sm object-contain object-left-top pointer-events-none select-none" />
             <img
               v-show="sketches.get(item[0])"
               :src="sketches.get(item[0])?.url"
-              :alt="`img-${item[0]}`"
-              class="absolute top-0 left-0 h-full w-full rounded-sm object-contain object-left-top"
+              class="absolute top-0 left-0 h-full w-full rounded-sm object-contain object-left-top pointer-events-none select-none"
             />
           </div>
 
           <button
             @click="removeFile(item[0])"
-            class="absolute z-10 right-0 top-0 px-1.5 pb-1 text-xs text-red-500 font-bold bg-red-100 border-2 border-red-500 rounded-full cursor-pointer hover:bg-red-200 active:bg-red-300 transition-colors"
+            class="absolute z-10 right-0 top-0 px-1.5 pb-1 text-xs text-red-500 font-bold bg-red-100 border-2 border-red-500 rounded-full cursor-pointer hover:bg-red-200 active:bg-red-300 transition-colors select-none"
           >
             x
           </button>
         </div>
 
         <div class="h-full w-20 p-1 inline-block">
-          <div @click="uploadFile" class="relative h-full w-full border-2 rounded-sm cursor-pointer hover:bg-neutral-200 active:bg-neutral-300 select-none">
+          <div
+            v-if="images.size < MAX_FILE_SIZE"
+            @click="uploadFile"
+            class="relative h-full w-full border-2 rounded-sm cursor-pointer hover:bg-neutral-200 active:bg-neutral-300 select-none"
+          >
             <div class="absolute w-full h-full flex justify-center items-center">
               <UploadIcon width="30" height="30" />
             </div>
@@ -603,7 +700,11 @@ function canvasMouseMove(event) {
         </div>
 
         <div class="h-full w-20 p-1 inline-block">
-          <div @click="emptyImage" class="relative h-full w-full border-2 rounded-sm cursor-pointer hover:bg-neutral-200 active:bg-neutral-300 select-none">
+          <div
+            v-if="images.size < MAX_FILE_SIZE"
+            @click="emptyImage"
+            class="relative h-full w-full border-2 rounded-sm cursor-pointer hover:bg-neutral-200 active:bg-neutral-300 select-none"
+          >
             <span class="absolute top-1/4 left-1/4 w-1/2 h-1/2 flex justify-center items-center font-bold text-2xl">+</span>
           </div>
         </div>
@@ -614,7 +715,36 @@ function canvasMouseMove(event) {
       <hr class="border-2 border-cyan-800" />
 
       <div class="relative flex-1 h-full grid grid-cols-2 grid-rows-1">
-        <div class="absolute z-10 -left-12 -top-1 flex flex-col bg-white border-4 border-r-0" :class="{ hidden: !images.has(selectedUuid) }">
+        <div class="absolute z-10 -left-23 -top-1 flex flex-col bg-white border-4 border-r-0 select-none" :class="{ hidden: !images.has(selectedUuid) }">
+          <button
+            v-for="size of PEN_SIZES"
+            :key="size"
+            @click="selectedSize = size"
+            class="w-10 h-10 flex justify-center items-center cursor-pointer hover:brightness-90 active:brightness-80"
+            :class="{ 'bg-slate-300': selectedSize === size, 'bg-white': selectedSize !== size }"
+          >
+            <DotIcon :width="size" :height="size" />
+          </button>
+
+          <div class="mt-2.75 flex flex-col gap-5 justify-center items-center">
+            <label class="switch">
+              <input id="fill-checkbox" @click="(event) => (fillMode = event.currentTarget.checked)" type="checkbox" />
+              <span class="slider round"></span>
+            </label>
+
+            <label class="mb-3">
+              <div class="w-4 h-4 border-2 cursor-pointer" :style="{ background: fillMode ? penColour : 'transparent', 'border-color': penColour }"></div>
+              <input
+                type="color"
+                class="absolute w-0 h-0"
+                @focus="selectingColour = true"
+                @blur="selectingColour = false"
+                @change="(event) => (penColour = event.currentTarget.value)"
+            /></label>
+          </div>
+        </div>
+
+        <div class="absolute z-10 -left-12 -top-1 flex flex-col bg-white border-4 border-r-0 select-none" :class="{ hidden: !images.has(selectedUuid) }">
           <button
             v-for="mode of PEN_MODES"
             :key="mode.mode"
@@ -646,43 +776,31 @@ function canvasMouseMove(event) {
             <ClearImageIcon width="30" height="30" />
           </button>
 
-          <hr class="my-4 border-2" />
+          <hr class="border-2" />
 
           <button
-            v-for="size of PEN_SIZES"
-            :key="size"
-            @click="selectedSize = size"
-            class="w-10 h-10 flex justify-center items-center cursor-pointer hover:brightness-90 active:brightness-80"
-            :class="{ 'bg-slate-300': selectedSize === size, 'bg-white': selectedSize !== size }"
+            @click="undo"
+            :disabled="!undoStacks.get(selectedUuid)?.length"
+            class="flex justify-center items-center p-2 enabled:cursor-pointer bg-white enabled:hover:brightness-90 enabled:active:brightness-80"
           >
-            <DotIcon :width="size" :height="size" />
+            <UndoIcon width="24" height="24" class="pointer-events-none" :class="{ 'opacity-50': !undoStacks.get(selectedUuid)?.length }" />
           </button>
 
-          <div class="flex flex-col justify-center items-center my-2">
-            <label class="switch">
-              <input id="fill-checkbox" @click="(event) => (fillMode = event.currentTarget.checked)" type="checkbox" />
-              <span class="slider round"></span>
-            </label>
-            <label for="fill-checkbox">Fill</label>
-
-            <label for="colour-selector"><div class="w-4 h-4 border-2" :style="{ background: fillMode ? penColour : 'transparent', 'border-color': penColour }"></div></label>
-            <input
-              type="color"
-              id="colour-selector"
-              class="w-0 h-0"
-              @focus="selectingColour = true"
-              @blur="selectingColour = false"
-              @change="(event) => (penColour = event.currentTarget.value)"
-            />
-          </div>
+          <button
+            @click="redo"
+            :disabled="!redoStacks.get(selectedUuid)?.length"
+            class="flex justify-center items-center p-2 enabled:cursor-pointer bg-white enabled:hover:brightness-90 enabled:active:brightness-80"
+          >
+            <RedoIcon width="24" height="24" class="pointer-events-none" :class="{ 'opacity-50': !redoStacks.get(selectedUuid)?.length }" />
+          </button>
         </div>
 
-        <div class="relative h-full border-r-2 border-cyan-800">
+        <div class="relative h-full border-r-2 border-cyan-800 select-none">
           <div id="image-dropper" class="absolute top-1/8 left-1/8 h-3/4 w-3/4 m-auto border-4 border-gray-400 border-dashed"></div>
 
           <div v-show="!draggedOver" class="absolute w-full h-full p-1 pb-0 flex justify-center bg-white overflow-auto">
             <div class="relative w-full min-h-full h-fit pb-1">
-              <img v-show="images.get(selectedUuid)?.url" :src="images.get(selectedUuid)?.url" class="w-full border-2 border-gray-400" />
+              <img v-show="images.get(selectedUuid)?.url" :src="images.get(selectedUuid)?.url" class="w-full border-2 border-gray-400 pointer-events-none select-none" />
 
               <div
                 v-element-size="onResize"
@@ -709,7 +827,7 @@ function canvasMouseMove(event) {
             <div v-for="html of results.get(selectedUuid)?.html?.entries()" :key="`latex-${html[0]}`" v-html="html[1]"></div>
           </div>
 
-          <div class="absolute z-10 bottom-0 right-0 p-1 flex gap-2 font-bold font-[Consolas,monospace] border-t-2 border-l-2">
+          <div class="absolute z-10 bottom-0 right-0 p-1 flex gap-2 font-bold font-[Consolas,monospace] border-t-2 border-l-2 select-none">
             <button
               @click.prevent="copy(results.get(selectedUuid)?.mathml)"
               v-show="results.get(selectedUuid)?.mathml"
@@ -723,7 +841,7 @@ function canvasMouseMove(event) {
 
             <button
               @click.prevent="analyse(selectedUuid)"
-              :disabled="!selectedUuid || isAnalysing"
+              :disabled="isAnalysing || !(images.get(selectedUuid) || sketches.get(selectedUuid))"
               class="px-3 py-1 bg-[rgb(40,167,69)] enabled:hover:bg-[rgb(33,136,56)] enabled:active:bg-[rgb(30,126,52)] disabled:opacity-50 text-white transition-colors"
               :class="{ 'cursor-wait': isAnalysing, 'cursor-not-allowed': !selectedUuid, 'cursor-pointer': selectedUuid && !isAnalysing }"
             >
