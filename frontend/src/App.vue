@@ -46,6 +46,7 @@ const MATH_REGEX = /\\(begin|end)\{math\}/gi;
 
 const btnFileUpload = ref('btnFileUpload');
 const btnFileAdd = ref('btnFileAdd');
+const analysisType = ref('analysisType');
 const spanCopy = ref('spanCopy');
 const downloadForm = ref('downloadForm');
 const canvas = ref('canvas');
@@ -75,7 +76,7 @@ let curY;
 let anchorX;
 let anchorY;
 
-function canvasLoadImage({ ctx, blob, url, width, height, cb }) {
+function canvasLoadImage({ ctx, blob, url, width, height, cb, maintainRatio = true }) {
   if (!ctx) {
     canvasClear();
     ctx = getCtx();
@@ -83,7 +84,13 @@ function canvasLoadImage({ ctx, blob, url, width, height, cb }) {
 
   const img = new Image();
   img.onload = function () {
-    ctx.scale(width / img.width, height / img.height);
+    if (maintainRatio) {
+      const scale = Math.min(width / img.width, height / img.height);
+      ctx.scale(scale, scale);
+    } else {
+      ctx.scale(width / img.width, height / img.height);
+    }
+
     ctx.drawImage(img, 0, 0);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     cb?.();
@@ -224,20 +231,29 @@ function analyse(uuid) {
       isAnalysing.value = true;
       const formData = new FormData();
       formData.append('file', image);
+      formData.append('analysis_type', analysisType.value.value);
 
       const response = await fetch('http://127.0.0.1:8000/analyse', { method: 'POST', body: formData });
-      const output = (await response.json()).output;
-      const latex = output.latex;
-      const omml = output.omml;
-      const mathml = output.mathml;
-      const html = buildSvg(latex);
+      const body = await response.json();
 
-      if (html[0] == '<br/>') html.shift(1);
-      results.value.set(uuid, { html, latex, omml, mathml });
+      if (response.status === 200) {
+        const output = body.output;
+        const latex = output.latex;
+        const omml = output.omml;
+        const mathml = output.mathml;
+        const html = buildSvg(latex);
+
+        if (html[0] == '<br/>') html.shift(1);
+        results.value.set(uuid, { html, latex, omml, mathml });
+      } else if (body.error === 'Failed to analyse! Image too complex!') {
+        const html = ['<div class="analysis-failed"><p>Analysis Failed!</p><p>The image is too complex!</p></div>'];
+        results.value.set(uuid, { html });
+      } else {
+        throw new Error();
+      }
     } catch {
-      results.value.set(uuid, {
-        html: ['<div class="analysis-failed"><p>Analysis Failed!</p><p>The image is too complex!</p></div>'],
-      });
+      const html = ['<div class="analysis-failed"><p>Failed to connect to the server!</p><p>Please try again later!</p></div>'];
+      results.value.set(uuid, { html });
     } finally {
       isAnalysing.value = false;
     }
@@ -304,16 +320,20 @@ function download() {
   downloadForm.value.submit();
 }
 
-function copy(mathml) {
+function copy(selected) {
   navigator.permissions.query({ name: 'clipboard-write' }).then((result) => {
     if (result.state === 'granted') {
-      let text = mathml.join('');
-      if ((text.match(new RegExp('http://www.w3.org/1998/Math/MathML', 'g')) || []).length > 1) {
-        text = text.split('<math xmlns="http://www.w3.org/1998/Math/MathML"').join('\n\n<math xmlns="http://www.w3.org/1998/Math/MathML"');
+      let text;
+      if (analysisType.value.value === 'text_formula') {
+        text = selected?.mathml.join('');
+        if ((text.match(new RegExp('http://www.w3.org/1998/Math/MathML', 'g')) || []).length > 1) {
+          text = text.split('<math xmlns="http://www.w3.org/1998/Math/MathML"').join('\n\n<math xmlns="http://www.w3.org/1998/Math/MathML"');
+        }
+      } else {
+        text = selected?.latex.join('');
       }
 
       const blob = new Blob([text.trim()], { type: 'text/plain' });
-      ``;
       const item = new ClipboardItem({ 'text/plain': blob });
 
       navigator.clipboard.write([item]).then(
@@ -321,7 +341,7 @@ function copy(mathml) {
           spanCopy.value.textContent = 'Copied!';
           setTimeout(() => (spanCopy.value.textContent = 'Copy'), 2000);
         },
-        () => console.error('Unable to write to clipboard. Error:'),
+        () => console.error('Unable to write to clipboard.'),
       );
     } else {
       spanCopy.value.textContent = 'No permission to copy!';
@@ -829,23 +849,17 @@ function fixSelectBug() {
 
           <div class="absolute z-10 bottom-0 right-0 p-1 flex gap-2 font-bold font-[Consolas,monospace] border-t-2 border-l-2 select-none">
             <button
-              @click.prevent="copy(results.get(selectedUuid)?.mathml)"
-              v-show="results.get(selectedUuid)?.mathml"
-              :disabled="!results.get(selectedUuid)?.mathml"
+              @click.prevent="copy(results.get(selectedUuid))"
+              v-show="results.get(selectedUuid)?.latex"
+              :disabled="!results.get(selectedUuid)?.[analysisType.value === 'text_formula' ? 'mathml' : 'latex']"
               class="group px-3 py-1 flex items-center gap-1 border-1 border-[rgb(153,159,165)] bg-white enabled:hover:bg-[rgb(108,117,125)] enabled:active:bg-[rgb(85,92,100)] disabled:opacity-50 text-black hover:text-white active:text-white transition-colors"
-              :class="{ 'cursor-not-allowed': !results.get(selectedUuid)?.mathml, 'cursor-pointer': results.get(selectedUuid)?.mathml }"
+              :class="{
+                'cursor-not-allowed': !results.get(selectedUuid)?.[analysisType.value === 'text_formula' ? 'mathml' : 'latex'],
+                'cursor-pointer': results.get(selectedUuid)?.[analysisType.value === 'text_formula' ? 'mathml' : 'latex'],
+              }"
             >
               <CopyIcon width="20" height="20" colour="black" class="group-hover:invert group-active:invert" />
               <span ref="spanCopy">Copy</span>
-            </button>
-
-            <button
-              @click.prevent="analyse(selectedUuid)"
-              :disabled="isAnalysing || !(images.get(selectedUuid) || sketches.get(selectedUuid))"
-              class="px-3 py-1 bg-[rgb(40,167,69)] enabled:hover:bg-[rgb(33,136,56)] enabled:active:bg-[rgb(30,126,52)] disabled:opacity-50 text-white transition-colors"
-              :class="{ 'cursor-wait': isAnalysing, 'cursor-not-allowed': !selectedUuid, 'cursor-pointer': selectedUuid && !isAnalysing }"
-            >
-              Analyse
             </button>
 
             <button
@@ -858,6 +872,23 @@ function fixSelectBug() {
             >
               Download
             </button>
+
+            <button
+              @click.prevent="analyse(selectedUuid)"
+              :disabled="isAnalysing || !(images.get(selectedUuid) || sketches.get(selectedUuid))"
+              class="px-3 py-1 bg-[rgb(40,167,69)] enabled:hover:bg-[rgb(33,136,56)] enabled:active:bg-[rgb(30,126,52)] disabled:opacity-50 text-white transition-colors"
+              :class="{ 'cursor-wait': isAnalysing, 'cursor-not-allowed': !selectedUuid, 'cursor-pointer': selectedUuid && !isAnalysing }"
+            >
+              Analyse
+            </button>
+
+            <select ref="analysisType" class="self-center py-[6px] text-sm border-2 border-black">
+              <option value="text_formula">Formula & Text (Slow)</option>
+              <option value="text">Text only</option>
+              <option value="en_text">English Text</option>
+              <option value="ms_text">Malay Text</option>
+              <option value="ms_text">English & Malay Text</option>
+            </select>
           </div>
 
           <div>
