@@ -1,19 +1,19 @@
 <script setup>
 import { vElementSize } from '@vueuse/components';
 import { ref, watch } from 'vue';
-import UploadIcon from './components/UploadIcon.vue';
-import PencilIcon from './components/PencilIcon.vue';
-import EraserIcon from './components/EraserIcon.vue';
-import TrashIcon from './components/TrashIcon.vue';
-import ClearImageIcon from './components/ClearImageIcon.vue';
-import AddImageIcon from './components/AddImageIcon.vue';
-import LineIcon from './components/LineIcon.vue';
-import RectangleIcon from './components/RectangleIcon.vue';
-import OvalIcon from './components/OvalIcon.vue';
-import DotIcon from './components/DotIcon.vue';
-import CopyIcon from './components/CopyIcon.vue';
-import UndoIcon from './components/UndoIcon.vue';
-import RedoIcon from './components/RedoIcon.vue';
+import UploadIcon from './components/icons/UploadIcon.vue';
+import PencilIcon from './components/icons/PencilIcon.vue';
+import EraserIcon from './components/icons/EraserIcon.vue';
+import TrashIcon from './components/icons/TrashIcon.vue';
+import ClearImageIcon from './components/icons/ClearImageIcon.vue';
+import AddImageIcon from './components/icons/AddImageIcon.vue';
+import LineIcon from './components/icons/LineIcon.vue';
+import RectangleIcon from './components/icons/RectangleIcon.vue';
+import OvalIcon from './components/icons/OvalIcon.vue';
+import DotIcon from './components/icons/DotIcon.vue';
+import CopyIcon from './components/icons/CopyIcon.vue';
+import UndoIcon from './components/icons/UndoIcon.vue';
+import RedoIcon from './components/icons/RedoIcon.vue';
 
 const urlCreator = window.URL || window.webkitURL;
 
@@ -301,6 +301,8 @@ function buildSvg(latex = []) {
       const text = line.replaceAll(MATH_REGEX, '').trim();
       if (text === '') continue;
       try {
+        // MathJax is imported from index.html, ignore the eslint error
+        // eslint-disable-next-line no-undef
         html.push(MathJax.tex2svg(text).outerHTML);
       } catch {
         // If fail, skip it

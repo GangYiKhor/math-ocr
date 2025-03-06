@@ -58,12 +58,3 @@ def analyse_tesseract(settings: Settings, images: list[ImageType] | ImageType):
 		output.append(pytesseract.image_to_string(image, timeout=settings.TIMEOUT, lang=settings.LANG))
 
 	return output
-
-
-if __name__ == '__main__':
-	settings = Settings()
-	settings.read_config_file(BASE_DIR / 'settings.cfg')
-	settings.TESSERACT_PATH = BASE_DIR / 'Tesseract-OCR' / 'tesseract.exe'
-	image = Image.open(Path(BASE_DIR / 'images' / 'test.png'))
-	result = analyse_tesseract(settings, image)
-	print(result)

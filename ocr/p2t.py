@@ -149,7 +149,6 @@ def analyse_p2t(
 		) -> list[str] | BytesIO | dict[str, list[str] | BytesIO]:
 
 	results = analyser.analyse(image, input_type.value)
-	print(results)
 
 	match (input_type):
 		case P2TInput.TEXT_FORMULA | P2TInput.FORMULA:
@@ -166,24 +165,3 @@ def analyse_p2t(
 		return outputs
 
 	return convert_output(results, output_type)
-
-
-if __name__ == '__main__':
-	image = Image.open(BASE_DIR / 'images' / 'sqrt-2.3.png')
-	latex = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.LATEX)
-	print(latex)
-
-	mathml = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.MATHML)
-	print(mathml)
-
-	omml = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.OMML)
-	print(omml)
-
-	stream = analyse_p2t(image, P2TInput.TEXT_FORMULA, P2TOutput.DOCX)
-	filepath = 'pix2text.docx'
-	with open(filepath, 'wb') as file:
-		file.write(stream.getbuffer())
-	print(f'File written at {filepath}')
-
-	output = analyse_p2t(image, P2TInput.TEXT_FORMULA, [P2TOutput.LATEX, P2TOutput.MATHML, P2TOutput.DOCX])
-	print(output)
