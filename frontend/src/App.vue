@@ -573,8 +573,8 @@ function canvasMouseMove(event) {
   const ctx = getCtx();
   const ctxSketch = getCtxSketch();
 
+  sketchClear();
   if (!isDrawing.value) {
-    sketchClear();
     drawRect({
       ctx: ctxSketch,
       x: curX - size / 2,
@@ -598,7 +598,6 @@ function canvasMouseMove(event) {
 
     case 'line':
       if (anchorX === null || anchorY === null) break;
-      sketchClear();
       ctxSketch.beginPath();
       drawLine({ ctx: ctxSketch, x, y, size, fromX: anchorX, fromY: anchorY });
       ctxSketch.closePath();
@@ -606,7 +605,6 @@ function canvasMouseMove(event) {
 
     case 'rectangle':
       if (anchorX === null || anchorY === null) break;
-      sketchClear();
       drawRect({
         ctx: ctxSketch,
         x: Math.min(anchorX, x),
@@ -620,7 +618,6 @@ function canvasMouseMove(event) {
 
     case 'oval':
       if (anchorX === null || anchorY === null) break;
-      sketchClear();
       drawOval({
         ctx: ctxSketch,
         x: (anchorX + x) / 2,

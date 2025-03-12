@@ -3,14 +3,12 @@ from io import BytesIO
 from pathlib import Path
 from typing import Literal
 
-from docx import Document
-from lxml import etree
-from PIL import Image
-from PIL.Image import Image as ImageType
-from pix2text import Pix2Text
 import latex2mathml.converter
 import latex2mathml.exceptions
-
+from docx import Document
+from lxml import etree
+from PIL.Image import Image as ImageType
+from pix2text import Pix2Text
 
 FILE_DIR = Path(__file__).resolve().parent
 BASE_DIR = FILE_DIR.parent
@@ -19,7 +17,7 @@ BASE_DIR = FILE_DIR.parent
 class FormatConverter:
 	def __init__(self):
 		self.latex_to_mathml = latex2mathml.converter.convert
-		self.mathml_to_omml = etree.XSLT(etree.parse(BASE_DIR / 'data' / 'MML2OMML.XSL'))  #NOSONAR
+		self.mathml_to_omml = etree.XSLT(etree.parse(BASE_DIR / 'data' / 'MML2OMML.XSL'))  # NOSONAR
 
 	def convert_latex_to_mathml(self, latex: str) -> str:
 		return self.latex_to_mathml(latex)
@@ -84,10 +82,14 @@ class Sanitiser:
 class P2TAnalyser:
 	model = Pix2Text
 
-	def __init__(self, languages = ('en',)):
+	def __init__(self, languages=('en',)):
 		self.model = Pix2Text.from_config(languages=languages)
 
-	def analyse(self, image: ImageType, type: Literal['text', 'formula', 'text_formula', 'page', 'pdf'] = 'text_formula'):
+	def analyse(
+		self,
+		image: ImageType,
+		type: Literal['text', 'formula', 'text_formula', 'page', 'pdf'] = 'text_formula',
+	):
 		result = self.model.recognize(image, file_type=type, return_text=True)
 		return result
 
@@ -112,7 +114,7 @@ formatter = FormatConverter()
 
 
 def convert_output(results: list[str], output_type: P2TOutput) -> list[str] | BytesIO:
-	match (output_type):
+	match output_type:
 		case P2TOutput.LATEX:
 			return results
 
@@ -120,7 +122,11 @@ def convert_output(results: list[str], output_type: P2TOutput) -> list[str] | By
 			return [formatter.try_convert_latex_to_mathml(result) for result in results]
 
 		case P2TOutput.OMML:
-			return [formatter.try_convert_latex_to_omml(result) for result in results if result.startswith(Sanitiser.MATH_BEGIN)]
+			return [
+				formatter.try_convert_latex_to_omml(result)
+				for result in results
+				if result.startswith(Sanitiser.MATH_BEGIN)
+			]
 
 		case P2TOutput.DOCX:
 			document = Document()
@@ -143,22 +149,21 @@ def convert_output(results: list[str], output_type: P2TOutput) -> list[str] | By
 
 
 def analyse_p2t(
-		image: ImageType | Path,
-		input_type: P2TInput = P2TInput.TEXT_FORMULA,
-		output_type: P2TOutput | list[P2TOutput] = P2TOutput.LATEX,
-		) -> list[str] | BytesIO | dict[str, list[str] | BytesIO]:
-
+	image: ImageType | Path,
+	input_type: P2TInput = P2TInput.TEXT_FORMULA,
+	output_type: P2TOutput | list[P2TOutput] = P2TOutput.LATEX,
+) -> list[str] | BytesIO | dict[str, list[str] | BytesIO]:
 	results = analyser.analyse(image, input_type.value)
 
-	match (input_type):
-		case P2TInput.TEXT_FORMULA | P2TInput.FORMULA:
+	match input_type.value:
+		case P2TInput.TEXT_FORMULA.value | P2TInput.FORMULA.value:
 			results = Sanitiser.clean_mix_output(results)
-		case P2TInput.TEXT:
+		case P2TInput.TEXT.value:
 			results = [results]
-		case P2TInput.PDF:
+		case P2TInput.PDF.value:
 			results.to_markdown('output-pdf-md')
 		case _:
-			raise NotImplementedError()
+			raise NotImplementedError('Input Not Implemented!')
 
 	if isinstance(output_type, list):
 		outputs = {out_type.value: convert_output(results, out_type) for out_type in output_type}
