@@ -1,3 +1,4 @@
+bcrypt
 fastapi[standard]
 latex2mathml
 lxml
@@ -6,4 +7,5 @@ pillow
 pix2text
 pytesseract
 python-docx
+sqlmodel
 torch

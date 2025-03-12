@@ -9,3 +9,6 @@ pix2text.docx
 
 # Tesseract Executable
 Tesseract-OCR/
+
+# Database
+db.sqlite
