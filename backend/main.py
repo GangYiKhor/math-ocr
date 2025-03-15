@@ -1,26 +1,73 @@
+import mimetypes
 from contextlib import asynccontextmanager
+from datetime import datetime
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, Form, Response, UploadFile
+from fastapi import Cookie, Depends, FastAPI, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from PIL import Image
+from sqlmodel import Session, select
 
-from backend.models import create_db_and_tables
-from ocr import Settings, analyse_p2t, analyse_tesseract, convert_output
-from ocr.p2t import P2TOutput
+from backend.models import (
+	User,
+	UserSession,
+	create_db_and_tables,
+	create_user_session,
+	get_db_session,
+)
+from backend.settings import TESSERACT_PATH
+from ocr import P2TOutput, Settings, analyse_p2t, analyse_tesseract, convert_output
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
+mimetypes.init()
+mimetypes.add_type('application/javascript', '.js')
+
+
+SessionDep = Annotated[Session, Depends(get_db_session)]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	create_db_and_tables()
 	yield
+
+
+async def verify_csrf(
+	db_session: SessionDep,
+	csrf_token_header: Annotated[str, Header(alias='X-CSRFToken')] = None,
+	csrf_token_form: Annotated[str, Form(alias='csrf_token')] = None,
+):
+	csrf_token = csrf_token_header if csrf_token_header is not None else csrf_token_form
+	query = select(UserSession).where(UserSession.csrf_token == csrf_token)
+	user_session = db_session.exec(query).first()
+
+	if user_session is None or not user_session.is_valid():
+		raise HTTPException(status_code=401, detail='User not logged in!')
+
+	return user_session
+
+
+async def verify_session(db_session: SessionDep, session_id: Annotated[str | None, Cookie()] = None):
+	query = select(UserSession).where(UserSession.session_id == session_id)
+	user_session = db_session.exec(query).first()
+
+	if user_session is None or not user_session.is_valid():
+		raise HTTPException(status_code=401, detail='User not logged in!')
+
+	return user_session
+
+
+async def get_session(db_session: SessionDep, session_id: Annotated[str | None, Cookie()] = None):
+	query = select(UserSession).where(UserSession.session_id == session_id)
+	user_session = db_session.exec(query).first()
+	return user_session
 
 
 app = FastAPI(lifespan=lifespan)
@@ -32,6 +79,9 @@ app.add_middleware(
 	allow_headers=['*'],
 )
 
+app.mount('/static', StaticFiles(directory=APP_DIR / 'static'), name='static')
+templates = Jinja2Templates(directory=APP_DIR / 'templates')
+
 
 class InputType(str, Enum):
 	EN_TEXT = 'en_text'
@@ -42,30 +92,19 @@ class InputType(str, Enum):
 
 
 @app.get('/')
-async def root():
-	settings = Settings(
-		{
-			'TESSERACT_PATH': BASE_DIR / 'Tesseract-OCR' / 'tesseract.exe',
-			'TIMEOUT': 0,
-			'OUTPUT_TYPE': 'TEXT',
-			'LANG': 'eng',
-			'COMBINE': True,
-			'CLEAR_OUTPUT': True,
-			'PRINT_TEXT': False,
-		}
-	)
-	image = Image.open(BASE_DIR / 'images' / 'sqrt-2.3.png')
-	result_tesseract = analyse_tesseract(settings, image)
-	result_p2t = analyse_p2t(image)
-
-	return {
-		'tesseract': result_tesseract,
-		'pix2text': result_p2t,
-	}
+async def root(request: Request, user_session: Annotated[UserSession, Depends(get_session)]):
+	if user_session is not None and user_session.is_valid():
+		return templates.TemplateResponse(request, name='index.html', context={'csrf_token': user_session.csrf_token})
+	else:
+		return RedirectResponse('/login', 302)
 
 
-@app.post('/analyse')
-async def analyse(file: Annotated[UploadFile, Form()], analysis_type: Annotated[InputType, Form()], response: Response):
+@app.post('/analyse', dependencies=[Depends(verify_session), Depends(verify_csrf)])
+async def analyse(
+	file: Annotated[UploadFile, Form()],
+	analysis_type: Annotated[InputType, Form()],
+	response: Response,
+):
 	try:
 		image = Image.open(BytesIO(await file.read()))
 	except Exception:
@@ -74,7 +113,7 @@ async def analyse(file: Annotated[UploadFile, Form()], analysis_type: Annotated[
 
 	if analysis_type in [InputType.EN_TEXT, InputType.MS_TEXT, InputType.EN_MS_TEXT]:
 		settings = {
-			'TESSERACT_PATH': BASE_DIR / 'Tesseract-OCR' / 'tesseract.exe',
+			'TESSERACT_PATH': TESSERACT_PATH,
 			'TIMEOUT': 0,
 			'OUTPUT_TYPE': 'TEXT',
 			'COMBINE': True,
@@ -110,8 +149,11 @@ async def analyse(file: Annotated[UploadFile, Form()], analysis_type: Annotated[
 		return {'error': 'Failed to analyse! Image too complex!'}
 
 
-@app.post('/download')
-async def download(latex: Annotated[list[str], Form()], response: Response):
+@app.post('/download', dependencies=[Depends(verify_session), Depends(verify_csrf)])
+async def download(
+	latex: Annotated[list[str], Form()],
+	response: Response,
+):
 	try:
 		stream = convert_output(latex, output_type=P2TOutput.DOCX)
 		stream.seek(0)
@@ -123,3 +165,45 @@ async def download(latex: Annotated[list[str], Form()], response: Response):
 	except Exception:
 		response.status_code = 400
 		return {'error': 'Invalid LaTeX!'}
+
+
+# Authentications
+@app.get('/login')
+async def login_page(request: Request):
+	return templates.TemplateResponse(request=request, name='login.html')
+
+
+@app.post('/login')
+async def login(
+	request: Request,
+	username: Annotated[str, Form()],
+	password: Annotated[str, Form()],
+	response: Response,
+	db_session: SessionDep,
+):
+	user = select(User).where(User.username == username)
+	user = db_session.exec(user).first()
+
+	if user is None or not user.check_password(password):
+		return templates.TemplateResponse(
+			request=request,
+			name='login.html',
+			context={'form_error': 'Invalid username or password!'},
+		)
+
+	response = RedirectResponse('/', 302)
+	user_session = create_user_session(user, db_session)
+	max_age = (user_session.expiration - datetime.now()).total_seconds()
+	response.set_cookie('session_id', user_session.session_id, max_age=max_age, secure=True, samesite='strict')
+	response.set_cookie('csrf_token', user_session.csrf_token, max_age=max_age, secure=True, samesite='strict')
+
+	return response
+
+
+@app.get('/csrf')
+async def csrf(user_session: Annotated[UserSession, Depends(get_session)], response: Response):
+	if user_session is not None and user_session.is_valid():
+		return {'csrf_token': user_session.csrf_token}
+	else:
+		response.status_code = 401
+		return {'error': 'User not logged in!'}

@@ -1,10 +1,8 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
-from PIL import Image
-from PIL.Image import Image as ImageType
 import pytesseract
-
+from PIL.Image import Image as ImageType
 
 FILE_DIR = Path(__file__).resolve().parent
 BASE_DIR = FILE_DIR.parent
@@ -25,7 +23,7 @@ class Settings:
 		if settings is None:
 			return
 
-		for (key, value) in settings.items():
+		for key, value in settings.items():
 			setattr(self, key, value)
 
 	def read_config_file(self, config_file: Path):

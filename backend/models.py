@@ -1,11 +1,9 @@
 import secrets
 import uuid
 from datetime import datetime, timedelta
-from typing import Annotated
 
 import bcrypt
 import sqlalchemy
-from fastapi import Depends
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine
 
 
@@ -33,29 +31,15 @@ class User(SQLModel, table=True):
 
 class UserSession(SQLModel, table=True):
 	session_id: str = Field(default_factory=generate_token, max_length=64, primary_key=True)
+	csrf_token: str = Field(default_factory=generate_token, max_length=64, unique=True)
 	user_id: uuid.UUID = Field(foreign_key='user.id')
-	user: User = Relationship(link_model=User)
+	user: User = Relationship()
 	expiration: datetime = Field(default_factory=expiration_14_days)
 	is_revoked: bool = Field(default=False)
 
 	def refresh(self):
 		self.expiration = expiration_14_days()
 		return self
-
-	def revoke(self):
-		self.is_revoked = False
-		return self
-
-	def is_valid(self):
-		return not self.is_revoked and datetime.now() < self.expiration
-
-
-class CsrfToken(SQLModel, table=True):
-	csrf_token: str = Field(default_factory=generate_token, max_length=64, primary_key=True)
-	session_id: str = Field(foreign_key='usersession.session_id')
-	session: UserSession = Relationship(link_model=UserSession)
-	expiration: datetime = Field(default_factory=expiration_day)
-	is_revoked: bool = Field(default=False)
 
 	def revoke(self):
 		self.is_revoked = False
@@ -104,23 +88,8 @@ def create_user_session(user: User, db_session: Session):
 			if str(error.orig).endswith('usersession.session_id'):
 				db_session.rollback()
 				user_session.session_id = generate_token()
-			else:
-				raise error
-
-
-def create_csrf(user_session: UserSession, db_session: Session):
-	while True:
-		try:
-			csrf = CsrfToken(session_id=user_session.session_id)
-			db_session.add(csrf)
-			db_session.commit()
-			return csrf
-		except sqlalchemy.exc.IntegrityError as error:
-			if str(error.orig).endswith('csrftoken.csrf_token'):
+			elif str(error.orig).endswith('usersession.csrf_token'):
 				db_session.rollback()
-				csrf.csrf_token = generate_token()
+				user_session.session_id = generate_token()
 			else:
 				raise error
-
-
-SessionDep = Annotated[Session, Depends(get_db_session)]

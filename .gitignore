@@ -4,8 +4,10 @@ __pycache__
 
 # Input folder
 images
-!images/test.png
-pix2text.docx
+*.docx
+
+# Settings File
+backend/settings.py
 
 # Tesseract Executable
 Tesseract-OCR/

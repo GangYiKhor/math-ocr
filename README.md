@@ -6,25 +6,23 @@ An OCR application to extract text and/or mathematical expressions from images, 
 
 1. Clone this repository
 2. Run `pip install -r requirements.txt`
-3. Download Tesseract from
+3. Run `cd frontend && npm install`
+4. Download Tesseract from
    - https://tesseract-ocr.github.io/tessdoc/Installation.html
    - https://github.com/UB-Mannheim/tesseract/wiki
-4. Download Languages `*.traineddata` (Optional)
+5. Download Languages `*.traineddata` (Optional)
    - https://github.com/tesseract-ocr/tessdata
-5. Move downloaded languages to the installed path `.../Tesseract-OCR/tessdata/`
-6. Move `Tesseract-OCR/` into this repository
-7. Move your images `(.png, .jpg, .jpeg)` into `images/`
-8. Update `settings.cfg` if needed
-   - `TIMEOUT`: Timeout for OCR process, E.g. `<int>0`
-   - `LANG`: Any available languages, E.g. `eng`
+6. Move downloaded languages to the installed path `.../Tesseract-OCR/tessdata/`
+7. Move/Copy `Tesseract-OCR/` into this repository, besides `backend`/`frontend` directory
+8. Modify `TESSERACT_PATH` in `backend/settings.py`
 
 ## How to Run (Dev)
 
-### Method 1 (Shell)
-
-1. Run `fastapi dev backend/main.py`
-2. Run `npm run dev` in `./frontend/`
-
-### Method 2 (VSCode)
-
-1. Run debug session for `FastAPI Dev` and `Vue Dev`
+```bash
+cd frontend
+npm run build
+cd ..
+fastapi dev backend/main.py
+# Or run debug session `FastAPI Dev` in VSCode
+# Might take some time to start up due to PyTorch model loading
+```

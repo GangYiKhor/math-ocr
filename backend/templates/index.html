@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Math OCR</title>
+
+    <link href="{{ url_for('static', path='/favicon.ico') }}" rel="icon" type="image/x-icon" />
+
+    <script type="module" crossorigin src="{{ url_for('static', path='/bundle/index.js') }}"></script>
+    <link rel="stylesheet" crossorigin href="{{ url_for('static', path='/bundle/index.css') }}" />
+  </head>
+  <body>
+    <input type="hidden" name="login_url" id="login_url" value="{{ url_for('login') }}" />
+    <input type="hidden" name="analyse_url" id="analyse_url" value="{{ url_for('analyse') }}" />
+    <input type="hidden" name="download_url" id="download_url" value="{{ url_for('download') }}" />
+    <input type="hidden" name="csrf_url" id="csrf_url" value="{{ url_for('csrf') }}" />
+    <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}" />
+    <div id="app"></div>
+  </body>
+</html>

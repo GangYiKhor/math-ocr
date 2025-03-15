@@ -15,7 +15,25 @@ import CopyIcon from './components/icons/CopyIcon.vue';
 import UndoIcon from './components/icons/UndoIcon.vue';
 import RedoIcon from './components/icons/RedoIcon.vue';
 
+const ANALYSE_URL = document.getElementById('analyse_url')?.value
+const DOWNLOAD_URL = document.getElementById('download_url')?.value
+const LOGIN_URL = document.getElementById('login_url')?.value
+const CSRF_URL = document.getElementById('csrf_url')?.value
+const CSRF_TOKEN = document.getElementById('csrf_token')?.value
+
 const urlCreator = window.URL || window.webkitURL;
+
+function throttle(func, limit) {
+  let inThrottle;
+  return function() {
+    if (!inThrottle) {
+      func(arguments);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  }
+}
+
 
 function createEmptyImage(result) {
   result ??= {};
@@ -219,6 +237,19 @@ watch(
   { deep: true },
 );
 
+const checkLoginStatus = throttle(async function () {
+  const response = await fetch(CSRF_URL);
+    if (response.status === 401) {
+      window.location.href = LOGIN_URL;
+    }
+}, 5 * 60 * 1000)
+
+watch(
+  [images, sketches],
+  async () => checkLoginStatus(),
+  { deep: true },
+);
+
 function analyse(uuid) {
   if (isAnalysing.value) return;
 
@@ -232,8 +263,9 @@ function analyse(uuid) {
       const formData = new FormData();
       formData.append('file', image);
       formData.append('analysis_type', analysisType.value.value);
+      formData.append('csrf_token', CSRF_TOKEN);
 
-      const response = await fetch('http://127.0.0.1:8000/analyse', { method: 'POST', body: formData });
+      const response = await fetch(ANALYSE_URL, { method: 'POST', body: formData });
       const body = await response.json();
 
       if (response.status === 200) {
@@ -245,6 +277,8 @@ function analyse(uuid) {
 
         if (html[0] == '<br/>') html.shift(1);
         results.value.set(uuid, { html, latex, omml, mathml });
+      } else if (response.status === 401) {
+        window.location.href = LOGIN_URL
       } else if (body.error === 'Failed to analyse! Image too complex!') {
         const html = ['<div class="analysis-failed"><p>Analysis Failed!</p><p>The image is too complex!</p></div>'];
         results.value.set(uuid, { html });
@@ -317,8 +351,8 @@ function buildSvg(latex = []) {
 
 function download() {
   downloadForm.value.method = 'POST';
-  downloadForm.value.action = 'http://127.0.0.1:8000/download';
-  downloadForm.value.target = '';
+  downloadForm.value.action = DOWNLOAD_URL;
+  downloadForm.value.target = '_blank';
   downloadForm.value.submit();
 }
 
@@ -891,6 +925,7 @@ function fixSelectBug() {
           </div>
 
           <div>
+            <input type="hidden" name="csrf_token" :value="CSRF_TOKEN"/>
             <input type="hidden" name="latex" v-for="latex of results.get(selectedUuid)?.latex?.entries()" :key="latex[0]" :value="latex[1]" />
           </div>
         </form>
