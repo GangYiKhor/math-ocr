@@ -14,6 +14,8 @@ An OCR application to extract text and/or mathematical expressions from images, 
    - https://github.com/tesseract-ocr/tessdata
 6. Move downloaded languages to the installed path `.../Tesseract-OCR/tessdata/`
 7. Define `TESSERACT_PATH` in `.env` (Refer to `.env.template`)
+8. Create a user by running `python backend/createuser.py`
+   - You may change password using `python backend/changepassword.py`
 
 ## How to Run (Dev)
 
