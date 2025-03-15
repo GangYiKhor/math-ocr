@@ -18,8 +18,10 @@ import RedoIcon from './components/icons/RedoIcon.vue';
 const ANALYSE_URL = document.getElementById('analyse_url')?.value
 const DOWNLOAD_URL = document.getElementById('download_url')?.value
 const LOGIN_URL = document.getElementById('login_url')?.value
+const LOGOUT_URL = document.getElementById('logout_url')?.value
 const CSRF_URL = document.getElementById('csrf_url')?.value
 const CSRF_TOKEN = document.getElementById('csrf_token')?.value
+const USERNAME = document.getElementById('username')?.value
 
 const urlCreator = window.URL || window.webkitURL;
 
@@ -718,6 +720,16 @@ function fixSelectBug() {
     @mouseup.prevent="canvasMouseEnd"
     class="h-screen flex flex-col justify-center items-center bg-neutral-200"
   >
+    <form method="POST" :action="LOGOUT_URL">
+      <input type="hidden" name="csrf_token" :value="CSRF_TOKEN"/>
+      <button
+        type="submit"
+        class="absolute top-1 right-1 py-1 px-2 text-white bg-red-600 hover:brightness-95 active:brightness-90 cursor-pointer"
+      >
+        Logout <span>{{ USERNAME }}</span>
+      </button>
+    </form>
+
     <h1 class="mb-4 font-bold tracking-wider text-5xl pointer-events-none select-none">Math OCR</h1>
 
     <div class="h-[87%] w-[85%] grid grid-rows-[calc(var(--spacing)*30)_calc(var(--spacing))_1fr] bg-white border-cyan-800 border-4 rounded-t-xl">

@@ -70,6 +70,16 @@ async def get_session(db_session: SessionDep, session_id: Annotated[str | None, 
 	return user_session
 
 
+async def get_csrf(
+	db_session: SessionDep,
+	csrf_token: Annotated[str | None, Form()] = None,
+	session_id: Annotated[str | None, Cookie()] = None,
+):
+	query = select(UserSession).where(UserSession.csrf_token == csrf_token).where(UserSession.session_id == session_id)
+	user_session = db_session.exec(query).first()
+	return user_session
+
+
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
 	CORSMiddleware,
@@ -94,7 +104,14 @@ class InputType(str, Enum):
 @app.get('/')
 async def root(request: Request, user_session: Annotated[UserSession, Depends(get_session)]):
 	if user_session is not None and user_session.is_valid():
-		return templates.TemplateResponse(request, name='index.html', context={'csrf_token': user_session.csrf_token})
+		return templates.TemplateResponse(
+			request,
+			name='index.html',
+			context={
+				'csrf_token': user_session.csrf_token,
+				'username': user_session.user.full_name,
+			},
+		)
 	else:
 		return RedirectResponse('/login', 302)
 
@@ -207,3 +224,20 @@ async def csrf(user_session: Annotated[UserSession, Depends(get_session)], respo
 	else:
 		response.status_code = 401
 		return {'error': 'User not logged in!'}
+
+
+@app.post('/logout')
+async def logout(user_session: Annotated[UserSession, Depends(get_csrf)], db_session: SessionDep, response: Response):
+	if user_session is not None:
+		user_session.is_revoked = True
+		db_session.add(user_session)
+		db_session.commit()
+
+		response = RedirectResponse('/login', 302)
+		response.delete_cookie('session_id')
+		response.delete_cookie('csrf_token')
+
+		return response
+	else:
+		response.status_code = 401
+		return {'error': 'Not authorised!'}
