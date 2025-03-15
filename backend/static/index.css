@@ -1,0 +1,62 @@
+body {
+  position: relative;
+  box-sizing: border-box;
+  margin: 0;
+  min-width: 100vw;
+  min-height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+#bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 14px;
+  background-color: burlywood;
+}
+
+#walking-dog-1 {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  bottom: 14px;
+  animation: walking-1 120s infinite linear;
+}
+
+#walking-dog-2 {
+  position: absolute;
+  z-index: 10;
+  bottom: 0;
+  left: 0;
+  animation: walking-2 120s infinite linear;
+}
+
+@keyframes walking-1 {
+  0% {
+    transform: translateX(50px);
+  }
+
+  50% {
+    transform: translateX(-100vw);
+  }
+
+  100% {
+    transform: translateX(-100vw);
+  }
+}
+
+@keyframes walking-2 {
+  0% {
+    transform: translateX(-65px);
+  }
+
+  50% {
+    transform: translateX(-65px);
+  }
+
+  100% {
+    transform: translateX(100vw);
+  }
+}

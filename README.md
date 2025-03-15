@@ -21,11 +21,31 @@ Copy function does not work well for mathematical expressions yet, you need to p
 
 ## How to Run
 
+1. Start Vue Dev server
+
+```bash
+cd frontend
+npm run dev
+```
+
+2. Start FastAPI server
+```bash
+fastapi dev backend/main.py
+```
+
+3. Visit the page at http://localhost:8000
+
+## How to Run Production Server
+
+1. Build frontend
+
 ```bash
 cd frontend
 npm run build
-cd ..
+```
+
+2. Run FastAPI server
+
+```bash
 fastapi run backend/main.py
-# Or run debug session `FastAPI Dev` in VSCode
-# Might take some time to start up due to PyTorch model loading
 ```

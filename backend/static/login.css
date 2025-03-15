@@ -1,68 +1,68 @@
 * {
-	box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 body {
-	height: 100vh;
-	width: 100vw;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-		'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 main {
-	width: 400px;
-	padding: 20px 40px 40px;
-	border: solid 2px black;
-	border-radius: 10px;
-	background-color: aliceblue;
+  width: 400px;
+  padding: 20px 40px 40px;
+  margin: 0 5px;
+  border: solid 2px black;
+  border-radius: 10px;
+  background-color: aliceblue;
 }
 
 h1 {
-	margin: 0;
-	margin-bottom: 12px;
-	font-size: xx-large;
+  margin: 0;
+  margin-bottom: 12px;
+  font-size: xx-large;
 }
 
 form {
-	display: grid;
-	row-gap: 10px;
-	font-size: 16px;
+  display: grid;
+  row-gap: 10px;
+  font-size: 16px;
 }
 
 form div {
-	display: grid;
+  display: grid;
 }
 
 input {
-	padding: 7px 5px;
+  padding: 7px 5px;
 }
 
 span {
-	color: red;
-	font-weight: bold;
-	font-size: small;
+  color: red;
+  font-weight: bold;
+  font-size: small;
 }
 
 button[type='submit'] {
-	margin-top: 10px;
-	padding: 10px;
-	color: white;
-	font-weight: bold;
-	text-transform: uppercase;
-	border: none;
-	background-color: rgb(40, 167, 69);
-	cursor: pointer;
-	transition: background-color 0.05s;
+  margin-top: 10px;
+  padding: 10px;
+  color: white;
+  font-weight: bold;
+  text-transform: uppercase;
+  border: none;
+  background-color: rgb(40, 167, 69);
+  cursor: pointer;
+  transition: background-color 0.05s;
 }
 
 button[type='submit']:hover {
-	filter: brightness(90%);
-	background-color: rgb(33, 136, 56);
+  filter: brightness(90%);
+  background-color: rgb(33, 136, 56);
 }
 
 button[type='submit']:active {
-	background-color: rgb(30, 126, 52);
+  background-color: rgb(30, 126, 52);
 }

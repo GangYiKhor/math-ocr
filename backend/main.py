@@ -1,4 +1,5 @@
 import mimetypes
+import sys
 from contextlib import asynccontextmanager
 from datetime import datetime
 from enum import Enum
@@ -21,16 +22,22 @@ from backend.models import (
 	create_user_session,
 	get_db_session,
 )
-from backend.settings import TESSERACT_PATH
+from backend.settings import TESSERACT_PATH, VITE_DEV_URL
 from ocr import P2TOutput, Settings, analyse_p2t, analyse_tesseract, convert_output
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
+DEV_MODE = '--reload' in sys.argv or 'dev' in sys.argv
+
 mimetypes.init()
 mimetypes.add_type('application/javascript', '.js')
 
 
 SessionDep = Annotated[Session, Depends(get_db_session)]
+
+
+def dev_context(request: Request):
+	return {'DEV_MODE': DEV_MODE, 'DEV_VITE_URL': VITE_DEV_URL}
 
 
 @asynccontextmanager
@@ -90,7 +97,7 @@ app.add_middleware(
 )
 
 app.mount('/static', StaticFiles(directory=APP_DIR / 'static'), name='static')
-templates = Jinja2Templates(directory=APP_DIR / 'templates')
+templates = Jinja2Templates(directory=APP_DIR / 'templates', context_processors=[dev_context])
 
 
 class InputType(str, Enum):

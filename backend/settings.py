@@ -7,6 +7,7 @@ load_dotenv()
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
+VITE_DEV_URL = os.getenv('VITE_DEV_URL', 'http://localhost:5173')
 
 ENV_TESS_PATH = os.getenv('TESSERACT_PATH', 'Tesseract-OCR/tesseract.exe')
 
