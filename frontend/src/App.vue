@@ -724,7 +724,7 @@ function fixSelectBug() {
       <input type="hidden" name="csrf_token" :value="CSRF_TOKEN"/>
       <button
         type="submit"
-        class="absolute top-1 right-1 py-1 px-2 text-white bg-red-600 hover:brightness-95 active:brightness-90 cursor-pointer"
+        class="absolute top-1 right-1 py-1 px-2 text-white font-bold bg-red-600 hover:brightness-95 active:brightness-90 cursor-pointer"
       >
         Logout <span>{{ USERNAME }}</span>
       </button>
