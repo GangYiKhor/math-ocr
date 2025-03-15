@@ -1,6 +1,8 @@
 # OCR-Math
 
-An OCR application to extract text and/or mathematical expressions from images, which can be exported as MS `.docx` format for easy copy paste process
+An OCR application to extract text and/or mathematical expressions from images, which can be exported in `.docx` format for easy copy paste process.
+
+Copy function does not work well for mathematical expressions yet, you need to paste the copied mathml to `Notepad`, then copy them again _**(block by block)**_ and paste on `Microsoft Words` to make it work.
 
 ## How to Setup:
 
@@ -17,13 +19,13 @@ An OCR application to extract text and/or mathematical expressions from images, 
 8. Create a user by running `python backend/createuser.py`
    - You may change password using `python backend/changepassword.py`
 
-## How to Run (Dev)
+## How to Run
 
 ```bash
 cd frontend
 npm run build
 cd ..
-fastapi dev backend/main.py
+fastapi run backend/main.py
 # Or run debug session `FastAPI Dev` in VSCode
 # Might take some time to start up due to PyTorch model loading
 ```
