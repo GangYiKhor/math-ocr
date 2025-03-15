@@ -36,9 +36,6 @@ def check_password(password: str):
 	if not re.search(f'[{upper_re}]', password):
 		error.append('Password must contain uppercase alphabets!')
 
-	if not re.search(f'[{symbol_re}]', password):
-		error.append('Password must contain symbols!')
-
 	invalid_characters = re.findall(f'[^{number_re}{lower_re}{upper_re}{symbol_re}]', password)
 	if invalid_characters:
 		error.append(f'Invalid symbol! "{'", "'.join(list(set(invalid_characters)))}"')
