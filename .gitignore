@@ -1,13 +1,11 @@
 # Environment
+.env
 .venv
 __pycache__
 
 # Input folder
 images
 *.docx
-
-# Settings File
-backend/settings.py
 
 # Tesseract Executable
 Tesseract-OCR/
