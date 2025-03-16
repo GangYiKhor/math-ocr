@@ -15,10 +15,12 @@ from fastapi.templating import Jinja2Templates
 from PIL import Image
 from sqlmodel import Session, select
 
+from backend.createuser import check_password
 from backend.models import (
 	User,
 	UserSession,
 	create_db_and_tables,
+	create_user,
 	create_user_session,
 	get_db_session,
 )
@@ -197,6 +199,11 @@ async def login_page(request: Request):
 	return templates.TemplateResponse(request=request, name='login.html')
 
 
+@app.get('/register')
+async def register_page(request: Request):
+	return templates.TemplateResponse(request=request, name='register.html')
+
+
 @app.post('/login')
 async def login(
 	request: Request,
@@ -212,7 +219,22 @@ async def login(
 		return templates.TemplateResponse(
 			request=request,
 			name='login.html',
-			context={'form_error': 'Invalid username or password!'},
+			context={
+				'form_error': ['Invalid username or password!'],
+				'username': username,
+				'password': password,
+			},
+		)
+
+	if not user.is_activated:
+		return templates.TemplateResponse(
+			request=request,
+			name='login.html',
+			context={
+				'form_error': ['Account not activated yet! Please contact admin!'],
+				'username': username,
+				'password': password,
+			},
 		)
 
 	response = RedirectResponse('/', 302)
@@ -222,6 +244,54 @@ async def login(
 	response.set_cookie('csrf_token', user_session.csrf_token, max_age=max_age, secure=True, samesite='strict')
 
 	return response
+
+
+@app.post('/register')
+async def register(
+	request: Request,
+	full_name: Annotated[str, Form()],
+	username: Annotated[str, Form()],
+	password: Annotated[str, Form()],
+	db_session: SessionDep,
+):
+	existing_user = select(User).where(User.username == username)
+	existing_user = db_session.exec(existing_user).first()
+
+	if existing_user is not None:
+		return templates.TemplateResponse(
+			request=request,
+			name='register.html',
+			context={
+				'form_error': ['Username taken!'],
+				'full_name': full_name,
+				'username': username,
+				'password': password,
+			},
+		)
+
+	try:
+		check_password(password)
+	except ValueError as error:
+		return templates.TemplateResponse(
+			request=request,
+			name='register.html',
+			context={
+				'form_error': str(error).split('\n'),
+				'full_name': full_name,
+				'username': username,
+				'password': password,
+			},
+		)
+
+	password = User.hash_password(password)
+	user = User(username=username, full_name=full_name, password=password)
+	create_user(user, db_session)
+
+	return templates.TemplateResponse(
+		request=request,
+		name='register.html',
+		context={'success_msg': 'Account applied, please wait for approval!'},
+	)
 
 
 @app.get('/csrf')

@@ -85,7 +85,7 @@ def main():
 					break
 
 			password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-			user = User(username=username, full_name=full_name, password=password)
+			user = User(username=username, full_name=full_name, password=password, is_activated=True)
 			create_user(user, db_session)
 
 			print(Fore.GREEN + 'User Created!' + Style.RESET_ALL)

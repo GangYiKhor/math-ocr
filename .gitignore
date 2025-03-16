@@ -11,4 +11,4 @@ images
 Tesseract-OCR/
 
 # Database
-db.sqlite
+db.sqlite*

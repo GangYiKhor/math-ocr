@@ -46,7 +46,7 @@ def main():
 
 			print(Fore.GREEN + 'Password changed!' + Style.RESET_ALL)
 	except KeyboardInterrupt:
-		print(Fore.RED + 'Cancelled!' + Style.RESET_ALL)
+		print(Fore.RED + '\nCancelled!' + Style.RESET_ALL)
 
 
 if __name__ == '__main__':

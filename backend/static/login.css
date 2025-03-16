@@ -46,6 +46,10 @@ span {
   font-size: small;
 }
 
+#success-message {
+  color: rgb(40, 167, 69);
+}
+
 button[type='submit'] {
   margin-top: 10px;
   padding: 10px;
@@ -65,4 +69,25 @@ button[type='submit']:hover {
 
 button[type='submit']:active {
   background-color: rgb(30, 126, 52);
+}
+
+a {
+  text-align: center;
+  font-size: small;
+  font-weight: 500;
+  text-decoration: none;
+  color: rgb(0, 0, 150);
+}
+
+a:hover {
+  color: rgb(0, 0, 250);
+}
+
+a:active {
+  color: rgb(0, 0, 100);
+}
+
+a:hover,
+a:active {
+  text-decoration: underline;
 }

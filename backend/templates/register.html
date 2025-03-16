@@ -12,9 +12,10 @@
 
   <body>
     <main>
-      <h1>Login</h1>
+      <h1>Register</h1>
 
-      <form method="POST" action="{{ url_for('login') }}">
+      <form method="POST" action="{{ url_for('register') }}">
+        <input type="text" name="full_name" placeholder="Name" value="{{ full_name }}" />
         <input type="text" name="username" placeholder="Username" value="{{ username }}" />
         <input type="password" name="password" placeholder="Password" value="{{ password }}" />
 
@@ -24,8 +25,12 @@
           {% endfor %}
         {% endif %}
 
-        <button type="submit">Login</button>
-        <a href="{{ url_for('register') }}">Apply for an account</a>
+        {% if success_msg %}
+          <span id="success-message">{{ success_msg }}</span>
+        {% endif %}
+
+        <button type="submit">Register</button>
+        <a href="{{ url_for('login') }}">Already have an account?</a>
       </form>
     </main>
 

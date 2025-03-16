@@ -24,6 +24,11 @@ class User(SQLModel, table=True):
 	username: str = Field(max_length=50, index=True, unique=True)
 	full_name: str = Field(max_length=255)
 	password: str = Field()
+	is_activated: bool = Field(default=False)
+
+	@staticmethod
+	def hash_password(password: str):
+		return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 	def check_password(self, password: str):
 		return bcrypt.checkpw(password.encode(), self.password.encode())

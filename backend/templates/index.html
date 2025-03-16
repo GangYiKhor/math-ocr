@@ -9,12 +9,12 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/index.css') }}" />
 
     {% if DEV_MODE %}
-    <script type="module" src="{{ DEV_VITE_URL }}/@vite/client"></script>
-    <script type="module" src="{{ DEV_VITE_URL }}/src/main.js"></script>
-    <script type="module" src="{{ DEV_VITE_URL }}/src/external/mathjax/tex-svg.js"></script>
+      <script type="module" src="{{ DEV_VITE_URL }}/@vite/client"></script>
+      <script type="module" src="{{ DEV_VITE_URL }}/src/main.js"></script>
+      <script type="module" src="{{ DEV_VITE_URL }}/src/external/mathjax/tex-svg.js"></script>
     {% else %}
-    <script type="module" src="{{ url_for('static', path='/bundle/index.js') }}"></script>
-    <link rel="stylesheet" href="{{ url_for('static', path='/bundle/index.css') }}" />
+      <script type="module" src="{{ url_for('static', path='/bundle/index.js') }}"></script>
+      <link rel="stylesheet" href="{{ url_for('static', path='/bundle/index.css') }}" />
     {% endif %}
   </head>
   <body>
