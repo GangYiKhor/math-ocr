@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Math OCR</title>
+
+    <link href="{{ url_for('static', path='/favicon.ico') }}" rel="icon" type="image/x-icon" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/index.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/admin.css') }}" />
+  </head>
+  <body>
+    <div id="account-buttons">
+      <a id="admin-button" href="{{ url_for('root') }}">Math OCR Page</a>
+
+      <form method="POST" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button type="submit" id="logout-button">Logout {{ user.full_name }}</button>
+      </form>
+    </div>
+
+    <main>
+      <div>
+        <div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>{{session_id}}</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for user in users %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ user.username }}</strong> ({{ user.full_name }}) <span class="activate-status">{{ '' if user.is_activated else '[Not activated]' }}</span></td>
+                <td>
+                  <form method="POST" action="{{ url_for('admin') }}">
+                    <input type="hidden" name="user" value="{{ user.username }}" />
+                    <input type="hidden" name="status" value="{{ not user.is_activated }}" />
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <button type="submit" class="{{ 'deactivate-button' if user.is_activated else 'activate-button' }}">
+                      {{ 'Deactivate' if user.is_activated else 'Activate' }}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <div id="bottom-sheet"></div>
+    <img id="walking-dog-1" src="{{ url_for('static', path='/img/walking-dog-1.gif') }}" alt="walking dog 1" width="50" />
+    <img id="walking-dog-2" src="{{ url_for('static', path='/img/walking-dog-2.gif') }}" alt="walking dog 2" width="80" />
+  </body>
+</html>

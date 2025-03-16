@@ -1,14 +1,14 @@
 import re
 import sys
-from getpass import getpass
 from pathlib import Path
 
 import bcrypt
 from colorama import Fore, Style
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from backend.createuser import account_input
 from backend.models import User, create_db_and_tables, create_user, engine
 
 number_re = '0-9'
@@ -44,45 +44,6 @@ def check_password(password: str):
 		raise ValueError('\n'.join(error))
 
 
-def account_input(db_session: Session):
-	full_name = input('Please enter your full name: ')
-
-	while True:
-		username = input('Please enter your username: ')
-
-		if not min_user_length <= len(username) <= max_user_length:
-			print(
-				Fore.RED
-				+ f'Username must be more than {min_user_length}-{max_user_length} characters'
-				+ Style.RESET_ALL
-			)
-			continue
-
-		existing_user = select(User).where(User.username == username)
-		existing_user = db_session.exec(existing_user).first()
-
-		if existing_user is not None:
-			print(Fore.RED + 'Username taken!' + Style.RESET_ALL)
-		else:
-			break
-
-	while True:
-		try:
-			password = getpass('Please enter your password: ')
-			check_password(password)
-			break
-		except ValueError as error:
-			print(Fore.RED + str(error) + Style.RESET_ALL)
-
-	while True:
-		if getpass('Please re-enter your password (Ctrl + C to cancel): ') != password:
-			print(Fore.RED + 'Password not matched!' + Style.RESET_ALL)
-		else:
-			break
-
-	return full_name, username, password
-
-
 def main():
 	try:
 		create_db_and_tables()
@@ -91,7 +52,7 @@ def main():
 			full_name, username, password = account_input(db_session)
 
 			password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-			user = User(username=username, full_name=full_name, password=password, is_activated=True)
+			user = User(username=username, full_name=full_name, password=password, is_activated=True, admin=True)
 			create_user(user, db_session)
 
 			print(Fore.GREEN + 'User Created!' + Style.RESET_ALL)

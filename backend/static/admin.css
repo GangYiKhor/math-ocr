@@ -1,0 +1,120 @@
+main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 100px;
+}
+
+main > div {
+  padding: 15px;
+  border: solid 2px black;
+  border-radius: 10px;
+  background-color: floralwhite;
+}
+
+main > div > div {
+  max-height: 80vh;
+  padding: 0 5px 0 0;
+  overflow-y: auto;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+td,
+th {
+  padding: 3px 7px;
+}
+
+th:not(:first-child) {
+  text-align: left;
+}
+
+td {
+  background-color: white;
+}
+
+td:first-child {
+  width: 35px;
+  text-align: right;
+  border: solid 1px black;
+}
+
+td:nth-child(2) {
+  width: 50vw;
+  border: solid 1px black;
+  border-right: none;
+}
+
+td:last-child {
+  border: solid 1px black;
+  border-left: none;
+}
+
+.activate-status {
+  color: red;
+  font-weight: bold;
+  font-size: small;
+}
+
+button {
+  padding: 7px 15px;
+  width: 100%;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.05s;
+}
+
+.activate-button {
+  background-color: rgb(40, 167, 69);
+}
+
+.activate-button:hover {
+  background-color: rgb(33, 136, 56);
+}
+
+.activate-button:active {
+  background-color: rgb(30, 126, 52);
+}
+
+.deactivate-button {
+  background-color: rgb(220, 53, 69);
+}
+
+.deactivate-button:hover {
+  background-color: rgb(200, 35, 51);
+}
+
+.deactivate-button:active {
+  background-color: rgb(189, 33, 48);
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  cursor: pointer;
+  background: #ccc;
+}
+
+::-webkit-scrollbar-track:hover {
+  cursor: pointer;
+  background: #c0c0c0;
+}
+
+::-webkit-scrollbar-thumb {
+  cursor: pointer;
+  background: #888;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #707070;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #555;
+}

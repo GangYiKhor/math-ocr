@@ -25,6 +25,7 @@ class User(SQLModel, table=True):
 	full_name: str = Field(max_length=255)
 	password: str = Field()
 	is_activated: bool = Field(default=False)
+	admin: bool = Field(default=False)
 
 	@staticmethod
 	def hash_password(password: str):
@@ -51,7 +52,7 @@ class UserSession(SQLModel, table=True):
 		return self
 
 	def is_valid(self):
-		return not self.is_revoked and datetime.now() < self.expiration
+		return not self.is_revoked and datetime.now() < self.expiration and self.user.is_activated
 
 
 db_url = 'sqlite:///db.sqlite'

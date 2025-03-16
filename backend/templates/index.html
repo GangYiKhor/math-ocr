@@ -18,13 +18,22 @@
     {% endif %}
   </head>
   <body>
+    <div id="account-buttons">
+      {% if admin %}
+        <a id="admin-button" href="{{ url_for('admin') }}">Admin Page</a>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button type="submit" id="logout-button">Logout {{ user.full_name }}</button>
+      </form>
+    </div>
+
     <input type="hidden" name="login_url" id="login_url" value="{{ url_for('login') }}" />
-    <input type="hidden" name="logout_url" id="logout_url" value="{{ url_for('logout') }}" />
     <input type="hidden" name="analyse_url" id="analyse_url" value="{{ url_for('analyse') }}" />
     <input type="hidden" name="download_url" id="download_url" value="{{ url_for('download') }}" />
     <input type="hidden" name="csrf_url" id="csrf_url" value="{{ url_for('csrf') }}" />
     <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}" />
-    <input type="hidden" name="username" id="username" value="{{ username }}" />
     <div id="app"></div>
 
     <div id="bottom-sheet"></div>

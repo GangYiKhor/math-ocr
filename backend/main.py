@@ -7,7 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Cookie, Depends, FastAPI, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import Cookie, Depends, FastAPI, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +22,7 @@ from backend.models import (
 	create_db_and_tables,
 	create_user,
 	create_user_session,
+	engine,
 	get_db_session,
 )
 from backend.settings import TESSERACT_PATH, VITE_DEV_URL
@@ -42,18 +43,31 @@ def dev_context(request: Request):
 	return {'DEV_MODE': DEV_MODE, 'DEV_VITE_URL': VITE_DEV_URL}
 
 
+def user_context(request: Request):
+	with Session(engine) as db_session:
+		session_id = request.cookies.get('session_id')
+		if session_id is None:
+			return {}
+
+		session = select(UserSession).where(UserSession.session_id == session_id)
+		session = db_session.exec(session).first()
+		if session is None or not session.is_valid():
+			return {}
+
+		return {
+			'admin': session.user.admin,
+			'user': {'full_name': session.user.full_name, 'username': session.user.username},
+			'csrf_token': session.csrf_token,
+		}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	create_db_and_tables()
 	yield
 
 
-async def verify_csrf(
-	db_session: SessionDep,
-	csrf_token_header: Annotated[str, Header(alias='X-CSRFToken')] = None,
-	csrf_token_form: Annotated[str, Form(alias='csrf_token')] = None,
-):
-	csrf_token = csrf_token_header if csrf_token_header is not None else csrf_token_form
+async def verify_csrf(db_session: SessionDep, csrf_token: Annotated[str, Form()] = None):
 	query = select(UserSession).where(UserSession.csrf_token == csrf_token)
 	user_session = db_session.exec(query).first()
 
@@ -69,6 +83,20 @@ async def verify_session(db_session: SessionDep, session_id: Annotated[str | Non
 
 	if user_session is None or not user_session.is_valid():
 		raise HTTPException(status_code=401, detail='User not logged in!')
+
+	return user_session
+
+
+async def verify_admin(
+	db_session: SessionDep,
+	session_id: Annotated[str | None, Cookie()] = None,
+	csrf_token: Annotated[str, Form()] = None,
+):
+	query = select(UserSession).where(UserSession.session_id == session_id).where(UserSession.csrf_token == csrf_token)
+	user_session = db_session.exec(query).first()
+
+	if user_session is None or not user_session.is_valid() or not user_session.user.admin:
+		raise HTTPException(status_code=404)
 
 	return user_session
 
@@ -99,7 +127,7 @@ app.add_middleware(
 )
 
 app.mount('/static', StaticFiles(directory=APP_DIR / 'static'), name='static')
-templates = Jinja2Templates(directory=APP_DIR / 'templates', context_processors=[dev_context])
+templates = Jinja2Templates(directory=APP_DIR / 'templates', context_processors=[dev_context, user_context])
 
 
 class InputType(str, Enum):
@@ -113,14 +141,7 @@ class InputType(str, Enum):
 @app.get('/')
 async def root(request: Request, user_session: Annotated[UserSession, Depends(get_session)]):
 	if user_session is not None and user_session.is_valid():
-		return templates.TemplateResponse(
-			request,
-			name='index.html',
-			context={
-				'csrf_token': user_session.csrf_token,
-				'username': user_session.user.full_name,
-			},
-		)
+		return templates.TemplateResponse(request, name='index.html')
 	else:
 		return RedirectResponse('/login', 302)
 
@@ -191,6 +212,44 @@ async def download(
 	except Exception:
 		response.status_code = 400
 		return {'error': 'Invalid LaTeX!'}
+
+
+# Admin
+@app.get('/admin')
+async def admin_page(
+	request: Request,
+	user_session: Annotated[UserSession, Depends(get_session)],
+	db_session: SessionDep,
+):
+	if user_session is None or not user_session.is_valid() or not user_session.user.admin:
+		raise HTTPException(status_code=404)
+
+	users = select(User).where(User.username != user_session.user.username)
+	users = db_session.exec(users).all()
+	users = [user.model_dump() for user in users]
+
+	return templates.TemplateResponse(request=request, name='admin.html', context={'users': users})
+
+
+@app.post('/admin', dependencies=[Depends(verify_admin)])
+async def admin(
+	request: Request,
+	user_session: Annotated[UserSession, Depends(get_session)],
+	user: Annotated[str, Form()],
+	status: Annotated[bool, Form()],
+	db_session: SessionDep,
+):
+	update_user = select(User).where(User.username == user)
+	update_user = db_session.exec(update_user).first()
+	update_user.is_activated = status
+	db_session.add(update_user)
+	db_session.commit()
+
+	users = select(User).where(User.username != user_session.user.username)
+	users = db_session.exec(users).all()
+	users = [user.model_dump() for user in users]
+
+	return templates.TemplateResponse(request=request, name='admin.html', context={'users': users})
 
 
 # Authentications
