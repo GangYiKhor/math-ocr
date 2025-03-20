@@ -63,6 +63,7 @@ body {
   right: 0;
   bottom: 14px;
   animation: walking-1 120s infinite linear;
+  pointer-events: none;
 }
 
 #walking-dog-2 {
@@ -71,6 +72,7 @@ body {
   bottom: 0;
   left: 0;
   animation: walking-2 120s infinite linear;
+  pointer-events: none;
 }
 
 @keyframes walking-1 {
