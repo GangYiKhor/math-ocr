@@ -134,10 +134,10 @@ function redo() {
 }
 
 function mouseUp(event) {
-  canvasComponent.value.canvasMouseEnd(event)
+  canvasComponent.value.canvasMouseEnd(event);
 }
 
-document.addEventListener("paste", async () => {
+async function loadClipboardImage() {
   const clipboardItems = await navigator.clipboard.read();
 
   let lastUuid;
@@ -151,7 +151,10 @@ document.addEventListener("paste", async () => {
   }
 
   if (lastUuid) selectFile(lastUuid);
-});
+}
+
+document.removeEventListener("paste", loadClipboardImage);
+document.addEventListener("paste", loadClipboardImage);
 </script>
 
 <template>
