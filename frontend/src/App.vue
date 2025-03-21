@@ -33,7 +33,7 @@ const {
   redoStacks,
   selectedUuid
 } = storeToRefs(projectStore);
-const { loadFiles } = projectStore;
+const { addImage, loadFiles, selectFile } = projectStore;
 
 const canvasStore = useCanvasStore();
 const { isDrawing } = storeToRefs(canvasStore)
@@ -136,6 +136,22 @@ function redo() {
 function mouseUp(event) {
   canvasComponent.value.canvasMouseEnd(event)
 }
+
+document.addEventListener("paste", async () => {
+  const clipboardItems = await navigator.clipboard.read();
+
+  let lastUuid;
+  for (const clipboardItem of clipboardItems) {
+    const imageTypes = clipboardItem.types?.filter(type => type.startsWith("image/"));
+
+    for (const imageType of imageTypes) {
+      const blob = await clipboardItem.getType(imageType);
+      lastUuid = addImage({ blob });
+    }
+  }
+
+  if (lastUuid) selectFile(lastUuid);
+});
 </script>
 
 <template>

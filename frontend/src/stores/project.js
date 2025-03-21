@@ -31,6 +31,18 @@ export const useProjectStore = defineStore('project', () => {
     selectedUuid.value = uuid;
   }
 
+  function addImage({ blob, url, select = false }) {
+    if (!url) url = urlCreator.createObjectURL(blob);
+
+    let uuid = url.split('/').at(-1);
+    while (images.value.has(uuid)) uuid += '_1';
+
+    images.value.set(uuid, { url, blob });
+
+    if (select) selectFile(uuid);
+    return uuid;
+  }
+
   function readFile(file, callback) {
     if (!FILE_TYPES.has(file.type)) return;
 
@@ -45,11 +57,7 @@ export const useProjectStore = defineStore('project', () => {
 
   function loadFile(file, select = false) {
     readFile(file, function (url, blob) {
-      let uuid = url.split('/').at(-1);
-      while (images.value.has(uuid)) uuid += '_1';
-      images.value.set(uuid, { url, blob });
-
-      if (select) selectFile(uuid);
+      addImage({ url, blob, select });
     });
   }
 
@@ -134,6 +142,7 @@ export const useProjectStore = defineStore('project', () => {
     undoStacks,
     redoStacks,
     selectedUuid,
+    addImage,
     selectFile,
     loadFile,
     loadFiles,
