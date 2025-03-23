@@ -1,4 +1,5 @@
 bcrypt
+colorama
 fastapi[standard]
 latex2mathml
 lxml
@@ -8,4 +9,3 @@ pix2text
 pytesseract
 python-docx
 sqlmodel
-torch

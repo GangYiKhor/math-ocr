@@ -6,42 +6,101 @@ Copy function does not work well for mathematical expressions yet, you need to p
 
 ## How to Setup:
 
-1. Clone this repository
-2. Run `pip install -r requirements.txt`
-3. Run `cd frontend && npm install`
-4. Download Tesseract from
-   - https://tesseract-ocr.github.io/tessdoc/Installation.html
-   - https://github.com/UB-Mannheim/tesseract/wiki
-5. Download Languages `*.traineddata` (Optional)
-   - https://github.com/tesseract-ocr/tessdata
-6. Move downloaded languages to the installed path `.../Tesseract-OCR/tessdata/`
-7. Define `TESSERACT_PATH` in `.env` (Refer to `.env.template`)
-8. Create a user by running `python backend/createuser.py`
-   - You may change password using `python backend/changepassword.py`
+### 1. Clone this repository
 
-## How to Run
-
-1. Start Vue Dev server
+### 2. Linux prerequisites
 
 ```bash
-cd frontend
-npm run dev
+sudo apt-get update
+sudo apt-get install gcc
+sudo apt-get install protobuf-compiler libprotoc-dev
 ```
 
-2. Start FastAPI server
+### 3. Install `Python` and packages
+
 ```bash
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt install python3.12 python3.12-dev
+sudo apt install pipx
+pipx ensurepath
+pipx install virtualenv
+# May need to restart for virtualenv to be in PATH
+
+virtualenv -p /usr/bin/python3.12 .venv
+source .venv/bin/activate
+
+# Install ONNX
+export CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=ON"
+pip install onnx
+
+# Optional, only install CPU version of PyTorch
+pip install -r requirements-pytorch-cpu-linux.txt
+
+pip install -r requirements.txt
+```
+
+### 4. Install `NVM`, `Node` and modules
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+nvm install
+nvm use
+npm --prefix ./frontend install
+```
+
+### 5. Install Tesseract and languages
+```bash
+# Refer to https://tesseract-ocr.github.io/tessdoc/Installation.html for Windows
+sudo apt install tesseract-ocr
+
+# Download Malay language
+wget https://raw.githubusercontent.com/tesseract-ocr/tessdata/refs/heads/main/msa.traineddata
+sudo mv msa.traineddata /usr/share/tesseract-ocr/5/tessdata/
+```
+
+### 6. Create .env File
+```bash
+cp .env.template .env
+# Change path in env if needed
+```
+
+### 7. Create user
+```bash
+python backend/createsuperuser.py
+```
+
+### 8. User management
+#### Change pasword
+```bash
+python backend/changepassword.py
+```
+
+#### Activate user accounts
+```bash
+python backend/activateuser.py
+```
+
+### 9. Run development server
+- Two servers required
+- You may also run debug in `VSCode` for both servers
+- Server will be started at http://localhost:8000
+```bash
+# Python server
 fastapi dev backend/main.py
-```
 
-3. Visit the page at http://localhost:8000
+# Vue server
+npm --prefix ./frontend run dev
+```
 
 ## How to Run Production Server
 
 1. Build frontend
 
 ```bash
-cd frontend
-npm run build
+npm --prefix ./frontend run build
 ```
 
 2. Run FastAPI server
