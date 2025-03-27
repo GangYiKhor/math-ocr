@@ -14,6 +14,7 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 2500,
     outDir: '../backend/static/bundle',
     emptyOutDir: true,
     rollupOptions: {

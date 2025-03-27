@@ -17,7 +17,7 @@
 			"name": "Vue Dev",
 			"request": "launch",
 			"command": "npm run dev",
-			"cwd": "${workspaceFolder}\\frontend"
+			"cwd": "${workspaceFolder}/frontend"
 		}
 	]
 }

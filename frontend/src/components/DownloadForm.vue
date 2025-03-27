@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/stores/project';
-import { defineProps, ref } from 'vue';
+import { ref } from 'vue';
 import { useCanvasStore } from '@/stores/canvas';
 import CopyIcon from './icons/CopyIcon.vue';
 
@@ -18,38 +18,28 @@ const canvas = useCanvasStore();
 const { canvasSize } = storeToRefs(canvas)
 const { canvasLoadImage } = canvas;
 
-const spanCopy = ref();
 const analysisType = ref();
 const downloadForm = ref();
 
 const isAnalysing = ref();
+const controller = ref();
 
-function copy(selected) {
+function copy(text, copiedSpan) {
+  if (!text) return;
+
   navigator.permissions.query({ name: 'clipboard-write' }).then((result) => {
     if (result.state === 'granted') {
-      let text;
-      if (analysisType.value.value === 'text_formula') {
-        text = selected?.mathml.join('');
-        if ((text.match(new RegExp('http://www.w3.org/1998/Math/MathML', 'g')) || []).length > 1) {
-          text = text.split('<math xmlns="http://www.w3.org/1998/Math/MathML"').join('\n\n<math xmlns="http://www.w3.org/1998/Math/MathML"');
-        }
-      } else {
-        text = selected?.latex.join('');
-      }
-
-      const blob = new Blob([text.trim()], { type: 'text/plain' });
-      const item = new ClipboardItem({ 'text/plain': blob });
-
-      navigator.clipboard.write([item]).then(
-        () => {
-          spanCopy.value.textContent = 'Copied!';
-          setTimeout(() => (spanCopy.value.textContent = 'Copy'), 2000);
-        },
-        () => console.error('Unable to write to clipboard.'),
-      );
-    } else {
-      spanCopy.value.textContent = 'No permission to copy!';
-      setTimeout(() => (spanCopy.value.textContent = 'Copy'), 2000);
+      navigator.clipboard.writeText(text);
+      copiedSpan.textContent = 'Copied!';
+      copiedSpan.style.color = '#008236';
+      copiedSpan.style.opacity = 1;
+      setTimeout(() => copiedSpan.style.opacity = 0, 1500)
+    }
+    else {
+      copiedSpan.textContent = 'No permission to copy!';
+      copiedSpan.style.color = '#e7000b';
+      copiedSpan.style.opacity = 1;
+      setTimeout(() => copiedSpan.style.opacity = 0, 1500)
     }
   });
 }
@@ -61,34 +51,40 @@ function download() {
   downloadForm.value.submit();
 }
 
-function buildSvg(latex = []) {
-  const html = [];
+function buildSvg(latex = [], mathml = []) {
+  const formulas = [];
 
-  for (const line of latex) {
-    if (line === '\n') {
-      html.push('<br/>');
-    } else if (line.includes('\n')) {
-      html.push(...buildSvg(line.split('\n')));
-    } else if (line.match(/\\/gi)) {
+  for (const [index, line] of latex.entries()) {
+    if (line.match(/\\/g)) {
       const text = line.replaceAll(/\\(begin|end)\{math\}/gi, '').trim();
       if (text === '') continue;
       try {
-        // MathJax is imported from index.html, ignore the eslint error
-        // eslint-disable-next-line no-undef
-        html.push(MathJax.tex2svg(text).outerHTML);
-      } catch {
-        // If fail, skip it
+        formulas.push({
+          // MathJax is imported from index.html, ignore the eslint error
+          // eslint-disable-next-line no-undef
+          html: MathJax.tex2svg(text).outerHTML,
+          copy: mathml[index],
+        })
+      }
+      catch {
+        // If fail, skip it}
       }
     } else {
-      html.push(`<span>${line.trim()}</span>`);
+      formulas.push({
+        html: `<span>${line.trim()}</span>`,
+        copy: line,
+      })
     }
   }
 
-  return html;
+  return formulas;
 }
 
 function analyse(uuid) {
-  if (isAnalysing.value) return;
+  if (isAnalysing.value) {
+    controller.value?.abort('Cancelled by user');
+    return;
+  }
 
   const fileImageUrl = images.value.get(uuid)?.url;
   const sketchesImageUrl = sketches.value.get(uuid)?.url;
@@ -96,13 +92,18 @@ function analyse(uuid) {
 
   const uploadImage = async function (image) {
     try {
+      const abortController = new AbortController();
+      const signal = abortController.signal;
+
       isAnalysing.value = true;
+      controller.value = abortController;
+
       const formData = new FormData();
       formData.append('file', image);
       formData.append('analysis_type', analysisType.value.value);
       formData.append('csrf_token', CSRF_TOKEN);
 
-      const response = await fetch(ANALYSE_URL, { method: 'POST', body: formData });
+      const response = await fetch(ANALYSE_URL, { method: 'POST', body: formData, signal });
       const body = await response.json();
 
       if (response.status === 200) {
@@ -110,21 +111,22 @@ function analyse(uuid) {
         const latex = output.latex;
         const omml = output.omml;
         const mathml = output.mathml;
-        const html = buildSvg(latex);
+        const formulas = buildSvg(latex, mathml);
 
-        if (html[0] == '<br/>') html.shift(1);
-        results.value.set(uuid, { html, latex, omml, mathml });
+        results.value.set(uuid, { formulas, latex, omml, mathml });
       } else if (response.status === 401) {
         window.location.href = LOGIN_URL
       } else if (body.error === 'Failed to analyse! Image too complex!') {
         const html = ['<div class="analysis-failed"><p>Analysis Failed!</p><p>The image is too complex!</p></div>'];
-        results.value.set(uuid, { html });
+        results.value.set(uuid, { formulas: [{ html }] });
       } else {
         throw new Error();
       }
-    } catch {
-      const html = ['<div class="analysis-failed"><p>Failed to connect to the server!</p><p>Please try again later!</p></div>'];
-      results.value.set(uuid, { html });
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        const html = ['<div class="analysis-failed"><p>Failed to connect to the server!</p><p>Please try again later!</p></div>'];
+        results.value.set(uuid, { formulas: [{ html }] });
+      }
     } finally {
       isAnalysing.value = false;
     }
@@ -163,22 +165,26 @@ function analyse(uuid) {
 
 <template>
   <form ref="downloadForm" class="relative h-full border-l-2 border-cyan-800">
-    <div class="absolute h-[93.5%] w-full p-2 overflow-auto">
-      <div v-for="html of results.get(selectedUuid)?.html?.entries()" :key="`latex-${html[0]}`" v-html="html[1]"></div>
+    <div class="absolute h-[calc(100%-73.5px)] w-full p-2 overflow-auto">
+      <div v-for="formula of results.get(selectedUuid)?.formulas?.entries()" :key="`result-${formula[0]}`">
+        <div v-if="formula[1]?.copy === undefined" v-html="formula[1]?.html">
+        </div>
+
+        <button
+          v-if="formula[1]?.copy"
+          @click.prevent.stop="(e) => copy(formula[1]?.copy, e.currentTarget.querySelector('.copied-text'))"
+          class="formula-copy px-2 w-full flex justify-between items-center hover:bg-gray-200 active:bg-gray-300 transition-colors cursor-pointer"
+        >
+          <div v-html="formula[1]?.html"></div>
+          <div class="relative">
+            <span class="copied-text absolute right-7 bottom-0 font-bold text-red-600 text-nowrap">Copied!</span>
+            <CopyIcon width="20" height="20" colour="black" />
+          </div>
+        </button>
+      </div>
     </div>
 
-    <div class="absolute z-10 bottom-0 right-0 p-1 flex gap-2 font-bold font-[Consolas,monospace] border-t-2 border-l-2 select-none">
-      <button
-        @click.prevent="copy(results.get(selectedUuid))"
-        v-show="results.get(selectedUuid)?.latex"
-        :disabled="!results.get(selectedUuid)?.[analysisType.value === 'text_formula' ? 'mathml' : 'latex']"
-        class="group px-3 py-1 flex items-center gap-1 border-1 border-[rgb(153,159,165)] bg-white enabled:hover:bg-[rgb(108,117,125)] enabled:active:bg-[rgb(85,92,100)] disabled:opacity-50 text-black hover:text-white active:text-white transition-colors"
-        :class="results.get(selectedUuid)?.[analysisType.value === 'text_formula' ? 'mathml' : 'latex'] ? 'cursor-pointer' : 'cursor-not-allowed'"
-      >
-        <CopyIcon width="20" height="20" colour="black" class="group-hover:invert group-active:invert" />
-        <span ref="spanCopy">Copy</span>
-      </button>
-
+    <div class="absolute z-10 bottom-0 right-0 p-1 w-full flex justify-end gap-2 font-bold font-[Consolas,monospace] border-t-2 select-none">
       <button
         @click.prevent="download(results.get(selectedUuid)?.latex)"
         v-show="results.get(selectedUuid)?.latex"
@@ -192,19 +198,18 @@ function analyse(uuid) {
 
       <button
         @click.prevent="analyse(selectedUuid)"
-        :disabled="isAnalysing || !(images.get(selectedUuid) || sketches.get(selectedUuid))"
-        class="px-3 py-1 bg-[rgb(40,167,69)] enabled:hover:bg-[rgb(33,136,56)] enabled:active:bg-[rgb(30,126,52)] disabled:opacity-50 text-white transition-colors"
-        :class="{ 'cursor-wait': isAnalysing, 'cursor-not-allowed': !selectedUuid, 'cursor-pointer': selectedUuid && !isAnalysing }"
+        class="px-3 py-1 disabled:opacity-50 bg-[rgb(40,167,69)] hover:bg-[rgb(33,136,56)] active:bg-[rgb(30,126,52)] text-white transition-colors"
+        :class="{
+          'saturate-10 cursor-progress': isAnalysing,
+          'cursor-pointer': selectedUuid && !isAnalysing,
+        }"
       >
-        Analyse
+        {{ isAnalysing ? 'Cancel' : 'Analyse' }}
       </button>
 
       <select ref="analysisType" class="self-center py-[6px] text-sm border-2 border-black">
-        <option value="text_formula">Formula & Text (Slow)</option>
-        <option value="text">Text only</option>
-        <option value="en_text">English Text</option>
-        <option value="ms_text">Malay Text</option>
-        <option value="ms_text">English & Malay Text</option>
+        <option value="text_formula">Formula (Slow)</option>
+        <option value="en_ms_text">Text</option>
       </select>
     </div>
 

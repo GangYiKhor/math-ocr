@@ -59,6 +59,20 @@ div:has(> .analysis-failed) {
   color: rgb(220, 53, 69);
 }
 
+.formula-copy > div:last-child > svg {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+.formula-copy > div:last-child > span {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.formula-copy:hover > div:last-child > svg,
+.formula-copy:active > div:last-child > svg {
+  opacity: 1;
+}
+
 /* Override MathJax equation large margin */
 mjx-container[jax='SVG'][display='true'] {
   margin: 8px 0 !important;

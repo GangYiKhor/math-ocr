@@ -2,7 +2,7 @@
 import UploadIcon from './icons/UploadIcon.vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/stores/project';
-import { defineProps, ref } from 'vue';
+import { ref } from 'vue';
 import { useCanvasStore } from '@/stores/canvas';
 
 const props = defineProps(['MAX_FILE_SIZE']);

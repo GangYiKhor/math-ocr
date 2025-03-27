@@ -104,7 +104,6 @@ function onClearCanvas() {
   canvasComponent.value.saveCanvas();
 }
 
-
 function undo() {
   const undoImage = undoStacks.value.get(selectedUuid.value)?.pop();
   if (!undoImage) return;
@@ -136,6 +135,14 @@ function redo() {
 function mouseUp(event) {
   canvasComponent.value.canvasMouseEnd(event);
 }
+
+function keyDown(event) {
+  if (event.key === 'z' && event.ctrlKey) undo()
+  else if ((event.key ==='y' && event.ctrlKey) || (event.key === 'Z' && event.ctrlKey)) redo()
+}
+
+document.removeEventListener("keydown", keyDown);
+document.addEventListener('keydown', keyDown);
 
 async function loadClipboardImage() {
   const clipboardItems = await navigator.clipboard.read();

@@ -1,6 +1,6 @@
 <script setup>
 import { vElementSize } from '@vueuse/components';
-import { ref, watch, defineExpose } from 'vue';
+import { ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/stores/project';
 import { useCanvasStore } from '@/stores/canvas';

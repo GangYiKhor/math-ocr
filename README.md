@@ -2,11 +2,22 @@
 
 An OCR application to extract text and/or mathematical expressions from images, which can be exported in `.docx` format for easy copy paste process.
 
-Copy function does not work well for mathematical expressions yet, you need to paste the copied mathml to `Notepad`, then copy them again _**(block by block)**_ and paste on `Microsoft Words` to make it work.
+They can also be copied one by one and paste into MS Words as Equation/Text.
+
+## Environments:
+
+- `Ubuntu 24.04.1 LTS`
+- `Python 3.12`
+- `Node v23.10.0`
 
 ## How to Setup:
 
 ### 1. Clone this repository
+
+```bash
+git clone https://github.com/GangYiKhor/math-ocr.git
+cd math-ocr
+```
 
 ### 2. Linux prerequisites
 
@@ -40,6 +51,7 @@ pip install -r requirements.txt
 ```
 
 ### 4. Install `NVM`, `Node` and modules
+
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
@@ -52,6 +64,7 @@ npm --prefix ./frontend install
 ```
 
 ### 5. Install Tesseract and languages
+
 ```bash
 # Refer to https://tesseract-ocr.github.io/tessdoc/Installation.html for Windows
 sudo apt install tesseract-ocr
@@ -62,31 +75,38 @@ sudo mv msa.traineddata /usr/share/tesseract-ocr/5/tessdata/
 ```
 
 ### 6. Create .env File
+
 ```bash
 cp .env.template .env
 # Change path in env if needed
 ```
 
 ### 7. Create user
+
 ```bash
 python backend/createsuperuser.py
 ```
 
 ### 8. User management
+
 #### Change pasword
+
 ```bash
 python backend/changepassword.py
 ```
 
 #### Activate user accounts
+
 ```bash
 python backend/activateuser.py
 ```
 
 ### 9. Run development server
+
 - Two servers required
 - You may also run debug in `VSCode` for both servers
 - Server will be started at http://localhost:8000
+
 ```bash
 # Python server
 fastapi dev backend/main.py
@@ -97,13 +117,13 @@ npm --prefix ./frontend run dev
 
 ## How to Run Production Server
 
-1. Build frontend
+### 1. Build frontend
 
 ```bash
 npm --prefix ./frontend run build
 ```
 
-2. Run FastAPI server
+### 2. Run FastAPI server
 
 ```bash
 fastapi run backend/main.py

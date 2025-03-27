@@ -16,8 +16,12 @@ BASE_DIR = FILE_DIR.parent
 
 class FormatConverter:
 	def __init__(self):
-		self.latex_to_mathml = latex2mathml.converter.convert
 		self.mathml_to_omml = etree.XSLT(etree.parse(BASE_DIR / 'data' / 'MML2OMML.XSL'))  # NOSONAR
+
+	def latex_to_mathml(self, latex: str) -> str:
+		mathml = latex2mathml.converter.convert(latex)
+		mathml = mathml.replace(' display="inline"', '')
+		return mathml
 
 	def convert_latex_to_mathml(self, latex: str) -> str:
 		return self.latex_to_mathml(latex)
@@ -50,32 +54,105 @@ class FormatConverter:
 class Sanitiser:
 	MATH_BEGIN = r'\begin{math}'
 	MATH_END = r'\end{math}'
+	MATRIX_BEGIN = r'\begin{matrix}'
+	MATRIX_END = r'\end{matrix}'
+	MATRIX_NEWLINE = r'\\'
 	MATH_CHECKER = r'$'
+
+	@staticmethod
+	def parse_newline(sanitised: list[str], in_math: bool):
+		if in_math:
+			sanitised[-1] += Sanitiser.MATH_END
+			sanitised.append(Sanitiser.MATH_BEGIN)
+		else:
+			sanitised.append('')
+
+	@staticmethod
+	def parse_math(sanitised: list[str], in_math: bool, next_char: str):
+		"""Return `in_math`, `in_matrix`, `skip_index`"""
+
+		if in_math:
+			sanitised[-1] += Sanitiser.MATH_END
+			sanitised.append('')
+		else:
+			sanitised.append(Sanitiser.MATH_BEGIN)
+
+		# Skip the second $ (E.g. $$)
+		if next_char == Sanitiser.MATH_CHECKER:
+			return not in_math, False, 1
+		else:
+			return not in_math, False, 0
+
+	@staticmethod
+	def parse_matrix_newline(sanitised: list[str], in_math: bool):
+		"""Return `skip`"""
+
+		if in_math:
+			sanitised[-1] += Sanitiser.MATH_END
+			sanitised.append(Sanitiser.MATH_BEGIN)
+			return 1
+
+		return 0
+
+	@staticmethod
+	def parse_matrix_start(sanitised: list[str], in_math: bool, in_matrix: bool):
+		"""Return `in_matrix`, `skip`"""
+
+		if in_math and not in_matrix:
+			sanitised[-1] += Sanitiser.MATH_END
+			sanitised.append(Sanitiser.MATH_BEGIN)
+			return True, len(Sanitiser.MATRIX_BEGIN) - 1
+
+		return in_matrix, 0
+
+	@staticmethod
+	def parse_matrix_end(sanitised: list[str], in_math: bool, in_matrix: bool):
+		"""Return `in_matrix`, `skip`"""
+
+		if in_math and in_matrix:
+			sanitised[-1] += Sanitiser.MATH_END
+			sanitised.append(Sanitiser.MATH_BEGIN)
+			return False, len(Sanitiser.MATRIX_END) - 1
+
+		return in_matrix, 0
 
 	@staticmethod
 	def clean_mix_output(text: str) -> list[str]:
 		sanitised = ['']
 		in_math = False
+		in_matrix = False
 		i = 0
 		length = len(text)
+
 		while i < length:
-			if text[i] == Sanitiser.MATH_CHECKER:
-				if in_math:
-					sanitised[-1] += Sanitiser.MATH_END
-					sanitised.append('')
-				else:
-					sanitised.append(r'\begin{math}')
+			char1 = text[i]
+			char2 = text[i + 1] if i + 1 < length else ''
 
-				if text[min(i + 1, length)] == Sanitiser.MATH_CHECKER:
-					i += 1
+			if char1 == '\n':
+				Sanitiser.parse_newline(sanitised, in_math)
 
-				in_math = not in_math
+			elif char1 == Sanitiser.MATH_CHECKER:
+				in_math, in_matrix, skip = Sanitiser.parse_math(sanitised, in_math, char2)
+				i += skip
+
+			elif char1 + char2 == Sanitiser.MATRIX_NEWLINE:
+				i += Sanitiser.parse_matrix_newline(sanitised, in_math)
+
+			elif text[i:].startswith(Sanitiser.MATRIX_BEGIN):
+				in_matrix, skip = Sanitiser.parse_matrix_start(sanitised, in_math, in_matrix)
+				i += skip
+
+			elif text[i:].startswith(Sanitiser.MATRIX_END):
+				in_matrix, skip = Sanitiser.parse_matrix_end(sanitised, in_math, in_matrix)
+				i += skip
 
 			else:
-				sanitised[-1] += text[i]
+				sanitised[-1] += char1
 
 			i += 1
 
+		sanitised = filter(lambda x: x not in ['', '\n', f'{Sanitiser.MATH_BEGIN}{Sanitiser.MATH_END}'], sanitised)
+		sanitised = list(sanitised)
 		return sanitised
 
 

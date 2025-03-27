@@ -180,14 +180,10 @@ async def analyse(
 
 	try:
 		results = analyse_p2t(image, analysis_type, [P2TOutput.LATEX, P2TOutput.OMML, P2TOutput.MATHML])
-		results[P2TOutput.LATEX.value] = [
-			result.strip() for result in results[P2TOutput.LATEX.value] if result.strip() != ''
-		]
 
 		return {
 			'output': {
 				'latex': results[P2TOutput.LATEX.value],
-				'omml': results[P2TOutput.OMML.value],
 				'mathml': results[P2TOutput.MATHML.value],
 			}
 		}
