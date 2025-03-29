@@ -92,14 +92,14 @@ function sketchClear() {
   getCtxSketch().clearRect(0, 0, sketchCanvas.value.width, sketchCanvas.value.height);
 }
 
-function drawShape({ ctx, stroke = true, size, fill }) {
+function drawShape({ ctx, stroke = true, size, fill, colour }) {
   if (stroke) {
     ctx.lineWidth = size;
-    ctx.strokeStyle = penColour.value;
+    ctx.strokeStyle = colour ?? penColour.value;
     ctx.stroke();
   }
   if (fill) {
-    ctx.fillStyle = penColour.value;
+    ctx.fillStyle = colour ?? penColour.value;
     ctx.fill();
   }
 }
@@ -113,17 +113,17 @@ function drawLine({ ctx, x, y, size, fromX, fromY, clear = false }) {
   ctx.stroke();
 }
 
-function drawOval({ ctx, x, y, radiusX, radiusY, stroke = true, size, fill }) {
+function drawOval({ ctx, x, y, radiusX, radiusY, stroke = true, size, fill, colour }) {
   ctx.beginPath();
   ctx.ellipse(x, y, radiusX, radiusY, 0, 0, CIRCLE);
-  drawShape({ ctx, stroke, size, fill });
+  drawShape({ ctx, stroke, size, fill, colour });
   ctx.closePath();
 }
 
-function drawRect({ ctx, x, y, width, height, stroke = true, size, fill }) {
+function drawRect({ ctx, x, y, width, height, stroke = true, size, fill, colour }) {
   ctx.beginPath();
   ctx.rect(x, y, width, height);
-  drawShape({ ctx, stroke, size, fill });
+  drawShape({ ctx, stroke, size, fill, colour });
   ctx.closePath();
 }
 
@@ -239,15 +239,20 @@ function canvasMouseMove(event) {
 
   sketchClear();
   if (!isDrawing.value) {
-    drawRect({
+    const options = {
       ctx: ctxSketch,
-      x: curX - size / 2,
-      y: curY - size / 2,
+      x: x - size / 2,
+      y: y - size / 2,
       width: size,
       height: size,
       fill: true,
       stroke: false,
-    });
+      colour: null,
+    }
+
+    if (selectedMode.value === 'erase') options.colour = 'white';
+
+    drawRect(options);
     return;
   }
 

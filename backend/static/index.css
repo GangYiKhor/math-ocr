@@ -57,48 +57,95 @@ body {
   background-color: burlywood;
 }
 
-#walking-dog-1 {
+#walking-dog-1-container {
   position: absolute;
   z-index: 10;
-  right: 0;
   bottom: 14px;
+  width: 100%;
+  height: fit-content;
+  display: flex;
+  justify-content: flex-end;
+  animation: walking-1-container 120s infinite linear;
+  pointer-events: none;
+}
+
+#walking-dog-1 {
+  min-width: 50px;
   animation: walking-1 120s infinite linear;
   pointer-events: none;
 }
 
-#walking-dog-2 {
+#walking-dog-2-container {
   position: absolute;
   z-index: 10;
   bottom: 0;
-  left: 0;
+  right: 0;
+  width: 100%;
+  height: fit-content;
+  display: flex;
+  justify-content: flex-start;
+  animation: walking-2-container 120s infinite linear;
+  pointer-events: none;
+}
+
+#walking-dog-2 {
+  min-width: 80px;
   animation: walking-2 120s infinite linear;
   pointer-events: none;
 }
 
 @keyframes walking-1 {
   0% {
-    transform: translateX(50px);
+    transform: translateX(100%);
   }
 
   50% {
-    transform: translateX(-100vw);
+    transform: translateX(0%);
   }
 
   100% {
-    transform: translateX(-100vw);
+    transform: translateX(0%);
+  }
+}
+
+@keyframes walking-1-container {
+  0% {
+    width: 100%;
+  }
+
+  50% {
+    width: 0;
+  }
+
+  100% {
+    width: 0;
   }
 }
 
 @keyframes walking-2 {
   0% {
-    transform: translateX(-65px);
+    transform: translateX(-100%);
   }
 
   50% {
-    transform: translateX(-65px);
+    transform: translateX(-100%);
   }
 
   100% {
-    transform: translateX(100vw);
+    transform: translateX(0%);
+  }
+}
+
+@keyframes walking-2-container {
+  0% {
+    width: 100%;
+  }
+
+  50% {
+    width: 100%;
+  }
+
+  100% {
+    width: 0;
   }
 }

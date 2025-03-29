@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+@theme {
+  --breakpoint-md: 1150px;
+}
+
 *,
 *::before,
 *::after {
@@ -8,10 +12,16 @@
 
 body {
   min-height: 100vh;
-  min-width: 1150px;
+  min-width: 700px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: auto;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar {

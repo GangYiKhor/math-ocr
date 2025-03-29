@@ -1,12 +1,8 @@
 <!DOCTYPE html>
 <html lang="">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {% include "head.html" %}
     <title>Math OCR</title>
-
-    <link href="{{ url_for('static', path='/favicon.ico') }}" rel="icon" type="image/x-icon" />
-    <link rel="stylesheet" href="{{ url_for('static', path='/index.css') }}" />
 
     {% if DEV_MODE %}
       <script type="module" src="{{ DEV_VITE_URL }}/@vite/client"></script>
@@ -36,8 +32,6 @@
     <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}" />
     <div id="app"></div>
 
-    <div id="bottom-sheet"></div>
-    <img id="walking-dog-1" src="{{ url_for('static', path='/img/walking-dog-1.gif') }}" alt="walking dog 1" width="50" />
-    <img id="walking-dog-2" src="{{ url_for('static', path='/img/walking-dog-2.gif') }}" alt="walking dog 2" width="80" />
+    {% include "bottom-sheet.html" %}
   </body>
 </html>

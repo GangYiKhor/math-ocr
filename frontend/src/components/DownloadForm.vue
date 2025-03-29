@@ -198,6 +198,7 @@ function analyse(uuid) {
 
       <button
         @click.prevent="analyse(selectedUuid)"
+        :disabled="!isAnalysing && !selectedUuid"
         class="px-3 py-1 disabled:opacity-50 bg-[rgb(40,167,69)] hover:bg-[rgb(33,136,56)] active:bg-[rgb(30,126,52)] text-white transition-colors"
         :class="{
           'saturate-10 cursor-progress': isAnalysing,

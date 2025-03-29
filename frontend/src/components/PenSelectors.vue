@@ -16,6 +16,8 @@ import UndoIcon from './icons/UndoIcon.vue';
 import RedoIcon from './icons/RedoIcon.vue';
 import SliderSwitch from './SliderSwitch.vue';
 
+const WHITE = ['#ffffff', 'rgb(255,255,255)', 'white']
+
 const projectStore = useProjectStore();
 const {
   images,
@@ -57,36 +59,9 @@ function onAddImage(event) {
 </script>
 
 <template>
-  <div class="absolute w-0 h-0 max-w-0 max-h-0" :class="{ hidden: !images.has(selectedUuid) }">
-    <div class="relative">
-      <div class="absolute right-0 flex bg-white border-x-4 border-r-cyan-800 select-none">
-        <div class="flex flex-col border-r-2 border-y-4">
-          <button
-            v-for="size of PEN_SIZES"
-            :key="size"
-            @click="selectedSize = size"
-            class="w-10 h-10 flex justify-center items-center cursor-pointer hover:brightness-90 active:brightness-80"
-            :class="selectedSize === size ? 'bg-slate-300' : 'bg-white'"
-          >
-            <DotIcon :width="size" :height="size" />
-          </button>
-
-          <div class="mt-2.75 flex flex-col gap-5 justify-center items-center">
-            <SliderSwitch @triggered="(event) => (penFill = event.currentTarget.checked)" />
-
-            <label class="mb-3">
-              <div class="w-4 h-4 border-2 cursor-pointer" :style="{ background: penFill ? penColour : 'transparent', 'border-color': penColour }"></div>
-              <input
-                type="color"
-                class="absolute w-0 h-0"
-                @focus="() => setPauseDraw(true)"
-                @blur="() => setPauseDraw(false)"
-                @change="(event) => (penColour = event.currentTarget.value)"
-              />
-            </label>
-          </div>
-        </div>
-
+  <div class="absolute h-full" :class="{ hidden: !images.has(selectedUuid) }">
+    <div class="relative h-full">
+      <div class="absolute right-0 h-full flex flex-row-reverse max-md:flex-wrap bg-white border-x-4 border-r-cyan-800 select-none overflow-auto thin-scrollbar">
         <div class="flex flex-col border-y-4">
           <button
             v-for="mode of PEN_MODES"
@@ -131,6 +106,40 @@ function onAddImage(event) {
           >
             <RedoIcon width="24" height="24" class="pointer-events-none" :class="{ 'opacity-50': !redoStacks.get(selectedUuid)?.length }" />
           </button>
+        </div>
+
+        <div class="flex flex-col md:border-r-2 border-b-4 md:border-t-4">
+          <button
+            v-for="size of PEN_SIZES"
+            :key="size"
+            @click="selectedSize = size"
+            class="w-10 h-10 flex justify-center items-center cursor-pointer hover:brightness-90 active:brightness-80"
+            :class="selectedSize === size ? 'bg-slate-300' : 'bg-white'"
+          >
+            <DotIcon :width="size" :height="size" />
+          </button>
+
+          <div class="mt-2.75 flex flex-col gap-5 justify-center items-center">
+            <SliderSwitch @triggered="(event) => (penFill = event.currentTarget.checked)" />
+
+            <label class="mb-3">
+              <div
+                class="w-5 h-5 border-2 cursor-pointer"
+                :style="{
+                  background: penFill ? penColour : 'transparent',
+                  'border-color': WHITE.includes(penColour.toLowerCase()) ? 'black' : penColour,
+                  'border-style': WHITE.includes(penColour.toLowerCase()) ? 'dotted': 'solid',
+                }"
+              ></div>
+              <input
+                type="color"
+                class="absolute w-0 h-0"
+                @focus="() => setPauseDraw(true)"
+                @blur="() => setPauseDraw(false)"
+                @change="(event) => (penColour = event.currentTarget.value)"
+              />
+            </label>
+          </div>
         </div>
       </div>
     </div>
