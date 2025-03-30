@@ -167,7 +167,7 @@ class P2TAnalyser:
 		image: ImageType,
 		type: Literal['text', 'formula', 'text_formula', 'page', 'pdf'] = 'text_formula',
 	):
-		result = self.model.recognize(image, file_type=type, return_text=True)
+		result = self.model.recognize(image, file_type=type)
 		return result
 
 

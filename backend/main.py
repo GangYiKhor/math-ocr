@@ -16,6 +16,7 @@ from PIL import Image
 from sqlmodel import Session, select
 
 from backend.createuser import check_password
+from backend.image_operation import convert_to_jpeg, crop_image
 from backend.models import (
 	User,
 	UserSession,
@@ -28,17 +29,22 @@ from backend.models import (
 from backend.settings import TESSERACT_PATH, VITE_DEV_URL
 from ocr import P2TOutput, Settings, analyse_p2t, analyse_tesseract, convert_output
 
+# CONSTANTS
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
 DEV_MODE = '--reload' in sys.argv or 'dev' in sys.argv
 
+
+# To ensure JS file deliver correctly
 mimetypes.init()
 mimetypes.add_type('application/javascript', '.js')
 
 
+# Database Dependencies
 SessionDep = Annotated[Session, Depends(get_db_session)]
 
 
+# Contexts
 def dev_context(request: Request):
 	return {'DEV_MODE': DEV_MODE, 'DEV_VITE_URL': VITE_DEV_URL}
 
@@ -67,6 +73,7 @@ async def lifespan(app: FastAPI):
 	yield
 
 
+# Verification Dependencies
 async def verify_csrf(db_session: SessionDep, csrf_token: Annotated[str, Form()] = None):
 	query = select(UserSession).where(UserSession.csrf_token == csrf_token)
 	user_session = db_session.exec(query).first()
@@ -117,6 +124,7 @@ async def get_csrf(
 	return user_session
 
 
+# Application
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
 	CORSMiddleware,
@@ -126,6 +134,7 @@ app.add_middleware(
 	allow_headers=['*'],
 )
 
+# Template and Static Files
 app.mount('/static', StaticFiles(directory=APP_DIR / 'static'), name='static')
 templates = Jinja2Templates(directory=APP_DIR / 'templates', context_processors=[dev_context, user_context])
 
@@ -138,6 +147,7 @@ class InputType(str, Enum):
 	TEXT_FORMULA = 'text_formula'
 
 
+# Application
 @app.get('/')
 async def root(request: Request, user_session: Annotated[UserSession, Depends(get_session)]):
 	if user_session is not None and user_session.is_valid():
@@ -154,6 +164,11 @@ async def analyse(
 ):
 	try:
 		image = Image.open(BytesIO(await file.read()))
+		image = convert_to_jpeg(image)
+		image = crop_image(image)
+
+		if image is None:
+			return {'output': {'latex': ['Empty image']}}
 	except Exception:
 		response.status_code = 415
 		return {'error': 'Invalid Image!'}
