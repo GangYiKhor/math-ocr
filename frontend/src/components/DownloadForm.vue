@@ -55,7 +55,7 @@ function buildSvg(latex = [], mathml = []) {
   const formulas = [];
 
   for (const [index, line] of latex.entries()) {
-    if (line.match(/\\/g)) {
+    if (line.startsWith('\\begin{math}')) {
       const text = line.replaceAll(/\\(begin|end)\{math\}/gi, '').trim();
       if (text === '') continue;
       try {

@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import sys
 from contextlib import asynccontextmanager
@@ -7,6 +8,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Annotated
 
+import uvicorn
 from fastapi import Cookie, Depends, FastAPI, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
@@ -26,8 +28,10 @@ from backend.models import (
 	engine,
 	get_db_session,
 )
-from backend.settings import TESSERACT_PATH, VITE_DEV_URL
+from backend.settings import LOGGING_CONFIG, TESSERACT_PATH, VITE_DEV_URL
 from ocr import P2TOutput, Settings, analyse_p2t, analyse_tesseract, convert_output
+
+logger = logging.getLogger('uvicorn.error')
 
 # CONSTANTS
 APP_DIR = Path(__file__).resolve().parent
@@ -169,7 +173,9 @@ async def analyse(
 
 		if image is None:
 			return {'output': {'latex': ['Empty image']}}
-	except Exception:
+	except Exception as error:
+		logger.error('Invalid Image!')
+		logger.exception(error)
 		response.status_code = 415
 		return {'error': 'Invalid Image!'}
 
@@ -202,7 +208,9 @@ async def analyse(
 				'mathml': results[P2TOutput.MATHML.value],
 			}
 		}
-	except Exception:
+	except Exception as error:
+		logger.error('Analysis failed!')
+		logger.exception(error)
 		response.status_code = 422
 		return {'error': 'Failed to analyse! Image too complex!'}
 
@@ -220,7 +228,9 @@ async def download(
 			media_type='application/octet',
 			headers={'Content-Disposition': 'attachment; filename="math-ocr.docx"'},
 		)
-	except Exception:
+	except Exception as error:
+		logger.error('Invalid Latex!')
+		logger.exception(error)
 		response.status_code = 400
 		return {'error': 'Invalid LaTeX!'}
 
@@ -388,3 +398,7 @@ async def logout(user_session: Annotated[UserSession, Depends(get_csrf)], db_ses
 	else:
 		response.status_code = 401
 		return {'error': 'Not authorised!'}
+
+
+def main():
+	uvicorn.run(app, log_config=LOGGING_CONFIG)

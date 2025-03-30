@@ -117,6 +117,14 @@ npm --prefix ./frontend run dev
 
 ## How to Run Production Server
 
+### Run Makefile script
+
+```bash
+make run/prod
+```
+
+#### === OR ===
+
 ### 1. Build frontend
 
 ```bash
@@ -126,5 +134,5 @@ npm --prefix ./frontend run build
 ### 2. Run FastAPI server
 
 ```bash
-fastapi run backend/main.py
+python startserver.py
 ```

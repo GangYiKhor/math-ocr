@@ -12,3 +12,6 @@ Tesseract-OCR/
 
 # Database
 db.sqlite*
+
+# Log files
+*.log
