@@ -1,5 +1,7 @@
 # OCR-Math
 
+#### **This project depends on [Pix2Text](https://github.com/breezedeus/Pix2Text) for formula recognitions and [TesseractOCR](https://github.com/tesseract-ocr/tesseract) for text-only recognitions.**
+
 An OCR application to extract text and/or mathematical expressions from images, which can be exported in `.docx` format for easy copy paste process.
 
 They can also be copied one by one and paste into MS Words as Equation/Text.
