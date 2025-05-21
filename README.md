@@ -4,6 +4,8 @@ An OCR application to extract text and/or mathematical expressions from images, 
 
 They can also be copied one by one and paste into MS Words as Equation/Text.
 
+![Demo Video](media/demo.gif)
+
 ## Environments:
 
 - `Ubuntu 24.04.1 LTS`
