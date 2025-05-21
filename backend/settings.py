@@ -8,6 +8,7 @@ load_dotenv()
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
 VITE_DEV_URL = os.getenv('VITE_DEV_URL', 'http://localhost:5173')
+WITH_AUTH = os.getenv('WITH_AUTH', 'false') == 'true'
 
 ENV_TESS_PATH = os.getenv('TESSERACT_PATH', '/bin/tesseract')
 

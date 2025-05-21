@@ -28,7 +28,7 @@ from backend.models import (
 	engine,
 	get_db_session,
 )
-from backend.settings import LOGGING_CONFIG, TESSERACT_PATH, VITE_DEV_URL
+from backend.settings import LOGGING_CONFIG, TESSERACT_PATH, VITE_DEV_URL, WITH_AUTH
 from ocr import P2TOutput, Settings, analyse_p2t, analyse_tesseract, convert_output
 
 logger = logging.getLogger('uvicorn.error')
@@ -55,6 +55,13 @@ def dev_context(request: Request):
 
 def user_context(request: Request):
 	with Session(engine) as db_session:
+		if not WITH_AUTH:
+			return {
+				'admin': False,
+				'user': {'full_name': '', 'username': ''},
+				'csrf_token': '',
+			}
+
 		session_id = request.cookies.get('session_id')
 		if session_id is None:
 			return {}
@@ -79,6 +86,9 @@ async def lifespan(app: FastAPI):
 
 # Verification Dependencies
 async def verify_csrf(db_session: SessionDep, csrf_token: Annotated[str, Form()] = None):
+	if not WITH_AUTH:
+		return None
+
 	query = select(UserSession).where(UserSession.csrf_token == csrf_token)
 	user_session = db_session.exec(query).first()
 
@@ -89,6 +99,9 @@ async def verify_csrf(db_session: SessionDep, csrf_token: Annotated[str, Form()]
 
 
 async def verify_session(db_session: SessionDep, session_id: Annotated[str | None, Cookie()] = None):
+	if not WITH_AUTH:
+		return None
+
 	query = select(UserSession).where(UserSession.session_id == session_id)
 	user_session = db_session.exec(query).first()
 
@@ -103,6 +116,9 @@ async def verify_admin(
 	session_id: Annotated[str | None, Cookie()] = None,
 	csrf_token: Annotated[str, Form()] = None,
 ):
+	if not WITH_AUTH:
+		return None
+
 	query = select(UserSession).where(UserSession.session_id == session_id).where(UserSession.csrf_token == csrf_token)
 	user_session = db_session.exec(query).first()
 
@@ -113,6 +129,9 @@ async def verify_admin(
 
 
 async def get_session(db_session: SessionDep, session_id: Annotated[str | None, Cookie()] = None):
+	if not WITH_AUTH:
+		return None
+
 	query = select(UserSession).where(UserSession.session_id == session_id)
 	user_session = db_session.exec(query).first()
 	return user_session
@@ -123,6 +142,9 @@ async def get_csrf(
 	csrf_token: Annotated[str | None, Form()] = None,
 	session_id: Annotated[str | None, Cookie()] = None,
 ):
+	if not WITH_AUTH:
+		return None
+
 	query = select(UserSession).where(UserSession.csrf_token == csrf_token).where(UserSession.session_id == session_id)
 	user_session = db_session.exec(query).first()
 	return user_session
@@ -154,7 +176,7 @@ class InputType(str, Enum):
 # Application
 @app.get('/')
 async def root(request: Request, user_session: Annotated[UserSession, Depends(get_session)]):
-	if user_session is not None and user_session.is_valid():
+	if not WITH_AUTH or (user_session is not None and user_session.is_valid()):
 		return templates.TemplateResponse(request, name='index.html')
 	else:
 		return RedirectResponse('/login', 302)
@@ -242,7 +264,7 @@ async def admin_page(
 	user_session: Annotated[UserSession, Depends(get_session)],
 	db_session: SessionDep,
 ):
-	if user_session is None or not user_session.is_valid() or not user_session.user.admin:
+	if not WITH_AUTH or (user_session is None or not user_session.is_valid() or not user_session.user.admin):
 		raise HTTPException(status_code=404)
 
 	users = select(User).where(User.username != user_session.user.username)
@@ -260,6 +282,9 @@ async def admin(
 	status: Annotated[bool, Form()],
 	db_session: SessionDep,
 ):
+	if not WITH_AUTH:
+		raise HTTPException(status_code=404)
+
 	update_user = select(User).where(User.username == user)
 	update_user = db_session.exec(update_user).first()
 	update_user.is_activated = status
@@ -276,11 +301,17 @@ async def admin(
 # Authentications
 @app.get('/login')
 async def login_page(request: Request):
+	if not WITH_AUTH:
+		raise HTTPException(status_code=404)
+
 	return templates.TemplateResponse(request=request, name='login.html')
 
 
 @app.get('/register')
 async def register_page(request: Request):
+	if not WITH_AUTH:
+		raise HTTPException(status_code=404)
+
 	return templates.TemplateResponse(request=request, name='register.html')
 
 
@@ -292,6 +323,9 @@ async def login(
 	response: Response,
 	db_session: SessionDep,
 ):
+	if not WITH_AUTH:
+		raise HTTPException(status_code=404)
+
 	user = select(User).where(User.username == username)
 	user = db_session.exec(user).first()
 
@@ -334,6 +368,9 @@ async def register(
 	password: Annotated[str, Form()],
 	db_session: SessionDep,
 ):
+	if not WITH_AUTH:
+		raise HTTPException(status_code=404)
+
 	existing_user = select(User).where(User.username == username)
 	existing_user = db_session.exec(existing_user).first()
 
@@ -376,7 +413,9 @@ async def register(
 
 @app.get('/csrf')
 async def csrf(user_session: Annotated[UserSession, Depends(get_session)], response: Response):
-	if user_session is not None and user_session.is_valid():
+	if not WITH_AUTH:
+		return {'csrf_token': ''}
+	elif user_session is not None and user_session.is_valid():
 		return {'csrf_token': user_session.csrf_token}
 	else:
 		response.status_code = 401
@@ -385,6 +424,9 @@ async def csrf(user_session: Annotated[UserSession, Depends(get_session)], respo
 
 @app.post('/logout')
 async def logout(user_session: Annotated[UserSession, Depends(get_csrf)], db_session: SessionDep, response: Response):
+	if not WITH_AUTH:
+		return ''
+
 	if user_session is not None:
 		user_session.is_revoked = True
 		db_session.add(user_session)

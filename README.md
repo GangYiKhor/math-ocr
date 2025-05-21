@@ -78,16 +78,16 @@ sudo mv msa.traineddata /usr/share/tesseract-ocr/5/tessdata/
 
 ```bash
 cp .env.template .env
-# Change path in env if needed
+# Update env if needed
 ```
 
-### 7. Create user
+### 7. Create user _(Optional if WITH_AUTH is false)_
 
 ```bash
 python backend/createsuperuser.py
 ```
 
-### 8. User management
+### 8. User management _(Optional if WITH_AUTH is false)_
 
 #### Change pasword
 

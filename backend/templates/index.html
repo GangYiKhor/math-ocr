@@ -19,10 +19,12 @@
         <a id="admin-button" href="{{ url_for('admin') }}">Admin Page</a>
       {% endif %}
 
-      <form method="POST" action="{{ url_for('logout') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <button type="submit" id="logout-button">Logout {{ user.full_name }}</button>
-      </form>
+      {% if user.username %}
+        <form method="POST" action="{{ url_for('logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button type="submit" id="logout-button">Logout {{ user.full_name }}</button>
+        </form>
+      {% endif %}
     </div>
 
     <input type="hidden" name="login_url" id="login_url" value="{{ url_for('login') }}" />
